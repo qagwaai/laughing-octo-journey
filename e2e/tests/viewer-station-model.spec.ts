@@ -506,6 +506,95 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
   }
 });
 
+test('handles unavailable route replies without confusing correlation or transport state', async ({ page }) => {
+  const { mock } = await setupViewerSceneTest(page);
+  const routeRequests: string[] = [];
+  mock.on('solar-system-get-request', (payload) => {
+    const request = payload as SolarSystemGetRequest;
+    const response = solarSystemGetResponse([marsStation]);
+    return {
+      event: 'solar-system-get-response',
+      data: {
+        ...response,
+        ...(request.navigation ? {
+          navigationState: {
+            status: 'supported',
+            solarSystemId: 'sol',
+            coordinateBasisId: 'stellar:sol:catalog-cartesian:v1',
+            epochMs: ACTIVE_SHIP.spatial.epochMs,
+            departure: { shipId: ACTIVE_SHIP.id, positionKm: ACTIVE_SHIP.spatial.positionKm },
+            destination: { marketId: marsStation.id, positionKm: { x: 150000000, y: 0, z: 0 } },
+            candidates: [],
+            previewEligibility: { status: 'eligible-with-warnings', reason: 'CLEARANCE_UNVERIFIED' },
+          },
+          navigationEstimate: pairedDistanceEstimate(marsStation.id, 100000000),
+        } : {}),
+      },
+    };
+  });
+  mock.on('market-list-by-location-request', () => ({
+    event: 'market-list-by-location-response',
+    data: { success: true, markets: [stationMarket(marsStation)] },
+  }));
+  mock.on('navigation-route-edge-batch-request', (payload) => {
+    const request = payload as { correlationId: string };
+    routeRequests.push(request.correlationId);
+    // Push directly so the fixture does not add missing correlation metadata.
+    mock.push('navigation-route-edge-batch-response', {
+      success: false,
+      message: 'Game unavailable',
+      availability: 'unavailable',
+      reason: 'startup_not_verified',
+      ...(routeRequests.length > 1 ? { correlationId: request.correlationId } : {}),
+      ...(routeRequests.length > 2 ? {
+        requestIdentity: { operation: 'navigation-route-edge-batch', entityType: 'solar-system', containerId: 'sol' },
+      } : {}),
+    });
+    return null;
+  });
+
+  await new GameShellPage(page).openViewer();
+  const viewer = new ViewerPage(page);
+  await viewer.selectSystem('Sol');
+  await viewer.expectSceneLoaded();
+  await viewer.switchToDistanceView();
+  await page.getByRole('button', { name: 'Plan route to Mars Orbital Market.' }).click();
+  const search = page.getByTestId('navigation-route-search');
+  const plan = search.getByRole('button', { name: 'Plan Route', exact: true });
+  await expect(plan).toBeEnabled();
+  await page.clock.install();
+  await plan.click();
+  await expect.poll(() => routeRequests.length).toBe(1);
+  await expect(plan).toBeDisabled();
+  await expect(search.getByRole('alert')).toHaveCount(0);
+  await page.clock.fastForward(30_000);
+  await expect(search.getByRole('alert')).toContainText('DIRECT_REFERENCE_UNAVAILABLE');
+  await expect(plan).toBeEnabled();
+
+  await plan.click();
+  await expect.poll(() => routeRequests.length).toBe(2);
+  await expect(search.getByRole('alert')).toContainText('startup_not_verified');
+  await expect(search.getByRole('alert')).toContainText('Game unavailable');
+  await expect(search.getByRole('alert')).not.toContainText('INVALID_RESPONSE');
+  await expect(search.locator('.navigation-route-choice')).toHaveCount(0);
+  await expect(plan).toBeEnabled();
+  mock.push('navigation-route-edge-batch-response', {
+    success: false,
+    message: 'Game unavailable',
+    availability: 'unavailable',
+    reason: 'startup_not_verified',
+    correlationId: routeRequests[0],
+  });
+  await page.clock.fastForward(60_000);
+  await expect(search.getByRole('alert')).toContainText('startup_not_verified');
+  expect(routeRequests).toHaveLength(2);
+  await expect(page.getByTestId('navigation-preview')).toBeVisible();
+  await plan.click();
+  await expect.poll(() => routeRequests.length).toBe(3);
+  await expect(search.getByRole('alert')).toContainText('startup_not_verified');
+  await expect(plan).toBeEnabled();
+});
+
 test('blocks route planning for an ineligible navigation preview', async ({ page }) => {
   const { mock } = await setupViewerSceneTest(page);
   let routeRequests = 0;

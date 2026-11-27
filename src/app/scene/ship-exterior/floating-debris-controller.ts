@@ -45,6 +45,8 @@ export class FloatingDebrisController {
   private started = false;
   private hasIngestedAnyResponse = false;
   private hasSeededColdBoot = false;
+  private activeScopeId: string | null | undefined;
+  private listResponseGeneration = 0;
   private static readonly COLD_BOOT_TRACTOR_BEAM_ID = 'local-cold-boot-ship-tractor-beam';
 
   constructor(private readonly deps: FloatingDebrisControllerDeps) {}
@@ -54,7 +56,6 @@ export class FloatingDebrisController {
       return;
     }
     this.started = true;
-    this.deps.stateService.setScope(this.deps.getCelestialBodyId());
     this.requestNearbyItems();
 
     const setIntervalFn = this.deps.setInterval ?? ((handler, interval) => window.setInterval(handler, interval));
@@ -66,10 +67,10 @@ export class FloatingDebrisController {
       return;
     }
     this.started = false;
+    this.invalidatePendingListResponse();
     this.hasIngestedAnyResponse = false;
     this.hasSeededColdBoot = false;
-    this.unsubscribeListResponse?.();
-    this.unsubscribeListResponse = undefined;
+    this.activeScopeId = undefined;
     if (this.pollHandle !== null) {
       const clearIntervalFn = this.deps.clearInterval ?? ((handle) => window.clearInterval(handle));
       clearIntervalFn(this.pollHandle);
@@ -79,6 +80,16 @@ export class FloatingDebrisController {
 
   /** Exposed for tests; production code triggers this via start()/timer. */
   requestNearbyItems(): void {
+    const scopeId = this.deps.getCelestialBodyId()?.trim() || null;
+    this.invalidatePendingListResponse();
+    if (scopeId !== this.activeScopeId) {
+      this.activeScopeId = scopeId;
+      this.deps.stateService.setScope(scopeId);
+      this.hasIngestedAnyResponse = false;
+      this.hasSeededColdBoot = false;
+      this.publishItems();
+    }
+
     const playerName = this.deps.getPlayerName().trim();
     const sessionKey = this.deps.sessionService.getSessionKey()?.trim() ?? '';
     const positionKm = this.deps.getShipPositionKm();
@@ -101,7 +112,7 @@ export class FloatingDebrisController {
       return;
     }
 
-    this.unsubscribeListResponse?.();
+    const requestGeneration = this.listResponseGeneration;
     this.unsubscribeListResponse = this.deps.socketService.listNearbyDeployedItems(
       {
         sessionKey,
@@ -110,8 +121,20 @@ export class FloatingDebrisController {
         positionKm: { x: positionKm.x, y: positionKm.y, z: positionKm.z },
         distanceKm: FLOATING_DEBRIS_RADIUS_KM,
       },
-      (response) => this.handleListResponse(response, positionKm, solarSystemId),
+      (response) => {
+        const currentScopeId = this.deps.getCelestialBodyId()?.trim() || null;
+        if (requestGeneration !== this.listResponseGeneration || scopeId !== currentScopeId) {
+          return;
+        }
+        this.handleListResponse(response, positionKm, solarSystemId);
+      },
     );
+  }
+
+  private invalidatePendingListResponse(): void {
+    this.listResponseGeneration += 1;
+    this.unsubscribeListResponse?.();
+    this.unsubscribeListResponse = undefined;
   }
 
   private handleListResponse(

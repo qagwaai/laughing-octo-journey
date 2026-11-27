@@ -1,5 +1,9 @@
 # Ship navigation: implementation and handoff
 
+For the latest frontend adaptation and owner-provided visual evidence, see the
+[current session handoff](./navigation-phase4-2026-11-23.md#current-session-handoff-2026-11-26).
+The closeouts below describe earlier sessions.
+
 ## Phase 4 route-consistency checkpoint: 2026-11-23
 
 The current route consumer adopts the corrected in-place Forge contract. See the

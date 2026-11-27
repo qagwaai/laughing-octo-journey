@@ -85,7 +85,8 @@ describe('ShipExteriorBootstrapController', () => {
 
     harness.controller.seedAsteroidsForInProgressMission();
 
-    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({ kind: 'fallback' });
+    expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(expect.objectContaining({ status: 'unavailable' }));
+    expect(harness.emitColdBootAsteroidSeedIntent).not.toHaveBeenCalled();
     expect(harness.socketService.listShipsByOwner).not.toHaveBeenCalled();
   });
 
@@ -99,7 +100,8 @@ describe('ShipExteriorBootstrapController', () => {
     );
     harness.controller.seedAsteroidsForInProgressMission();
     expect(harness.updateTargetingCapabilityFromShipList).toHaveBeenCalled();
-    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({ kind: 'fallback' });
+    expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(expect.objectContaining({ status: 'unavailable' }));
+    expect(harness.emitColdBootAsteroidSeedIntent).not.toHaveBeenCalled();
     expect(harness.socketService.listCelestialBodies).not.toHaveBeenCalled();
   });
 
@@ -107,9 +109,10 @@ describe('ShipExteriorBootstrapController', () => {
     const harness = makeControllerHarness({ launchSeedHint: 42 });
     const center = { x: 10, y: 20, z: 30 };
     const existingBodies = [
-      { id: 'cb-1', state: 'active' },
+      { id: 'cb-1', state: 'active', spatial: { positionKm: center } },
       { id: 'cb-2', state: 'destroyed' },
     ];
+    const sharedBody = { id: 'cb-shared', state: 'active', spatial: { positionKm: center } };
 
     harness.socketService.listShipsByOwner.mockImplementation(
       (_request: unknown, callback: (response: any) => void) => {
@@ -119,30 +122,28 @@ describe('ShipExteriorBootstrapController', () => {
     );
     harness.socketService.listCelestialBodies.mockImplementation((request: any, callback: (response: any) => void) => {
       expect(request.solarSystemId).toBe(DEFAULT_SOLAR_SYSTEM_ID);
-      expect(request.distanceKm).toBe(DEFAULT_CLUSTER_SPREAD_KM * 2);
-      expect(request.missionId).toBe('first-target');
       expect(request.positionKm).toEqual(center);
-      callback(singlePage(existingBodies));
+      if (request.missionId) {
+        expect(request.distanceKm).toBe(DEFAULT_CLUSTER_SPREAD_KM * 2);
+        expect(request.missionId).toBe('first-target');
+        expect(request.createdByCharacterId).toBe('char-1');
+        callback(singlePage(existingBodies));
+      } else {
+        expect(request.distanceKm).toBe(100);
+        expect(request.createdByCharacterId).toBeUndefined();
+        callback(singlePage([sharedBody, existingBodies[0]]));
+      }
       return harness.unsubscribeCelestialBodyListResponse;
     });
 
     harness.controller.seedAsteroidsForInProgressMission();
 
-    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({
-      kind: 'resume',
-      actor: {
-        playerName: 'Pioneer',
-        characterId: 'char-1',
-        sessionKey: 'session-key',
-      },
-      context: expect.objectContaining({
-        playerName: 'Pioneer',
-        characterId: 'char-1',
-        center,
-        launchSeedHint: 42,
-        existingBodies,
-      }),
-    });
+    expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'loaded',
+      center,
+      bodies: [sharedBody, existingBodies[0]],
+    }));
+    expect(harness.emitColdBootAsteroidSeedIntent).not.toHaveBeenCalled();
   });
 
   it('uses fallback samples when starter-ship list request fails', () => {
@@ -200,8 +201,9 @@ describe('ShipExteriorBootstrapController', () => {
     );
     const responder = pagedResponder(
       [
-        { success: true, celestialBodies: [{ id: 'cb-1' }], total: 2, offset: 0, limit: 1, hasMore: true },
-        { success: true, celestialBodies: [{ id: 'cb-2' }], total: 2, offset: 1, limit: 1, hasMore: false },
+        { success: true, celestialBodies: [{ id: 'cb-1', spatial: { positionKm: { x: 1, y: 2, z: 3 } } }], total: 2, offset: 0, limit: 1, hasMore: true },
+        { success: true, celestialBodies: [{ id: 'cb-2', spatial: { positionKm: { x: 1, y: 2, z: 3 } } }], total: 2, offset: 1, limit: 1, hasMore: false },
+        singlePage([]),
       ],
       harness.unsubscribeCelestialBodyListResponse,
     );
@@ -209,11 +211,11 @@ describe('ShipExteriorBootstrapController', () => {
 
     harness.controller.seedAsteroidsForInProgressMission();
 
-    expect(responder.offsets).toEqual([0, 1]);
-    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledTimes(1);
-    expect(harness.emitColdBootAsteroidSeedIntent.mock.calls[0][0].context.existingBodies).toEqual([
-      { id: 'cb-1' },
-      { id: 'cb-2' },
+    expect(responder.offsets).toEqual([0, 1, 0]);
+    expect(harness.emitColdBootAsteroidSeedIntent).not.toHaveBeenCalled();
+    expect(harness.emitLocalCelestialBodies.mock.calls[0][0].bodies).toEqual([
+      { id: 'cb-1', spatial: { positionKm: { x: 1, y: 2, z: 3 } } },
+      { id: 'cb-2', spatial: { positionKm: { x: 1, y: 2, z: 3 } } },
     ]);
   });
 
@@ -241,6 +243,7 @@ describe('ShipExteriorBootstrapController', () => {
     harness.controller.seedAsteroidsForInProgressMission();
 
     expect(harness.emitColdBootAsteroidSeedIntent).not.toHaveBeenCalled();
+    expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(expect.objectContaining({ status: 'unavailable' }));
   });
 
   it('unsubscribes ship and celestial-body listeners on dispose', () => {
@@ -260,6 +263,41 @@ describe('ShipExteriorBootstrapController', () => {
 
     expect(harness.unsubscribeShipListResponse).toHaveBeenCalled();
     expect(harness.unsubscribeCelestialBodyListResponse).toHaveBeenCalled();
+  });
+
+  it('ignores a field response after switching ships even if no replacement load starts', () => {
+    const harness = makeControllerHarness();
+    let shipId = 'ship-1';
+    harness.deps.getPreferredShipId = () => shipId;
+    let respond: ((response: any) => void) | undefined;
+    harness.socketService.listShipsByOwner.mockImplementation((_request: unknown, callback: (response: any) => void) => {
+      respond = callback;
+      return harness.unsubscribeShipListResponse;
+    });
+    harness.controller.seedAsteroidsForInProgressMission();
+    shipId = 'ship-2';
+    respond?.({ success: true, ships: [{ id: 'ship-1', spatial: { positionKm: { x: 1, y: 2, z: 3 } } }] });
+    expect(harness.socketService.listCelestialBodies).not.toHaveBeenCalled();
+    expect(harness.emitLocalCelestialBodies).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['shared sweep failure', singlePage([]), { success: false, message: 'unavailable' }],
+    ['invalid server position', singlePage([{ id: 'bad', state: 'active' }]), singlePage([])],
+  ])('does not fabricate a field after %s', (_label, firstPage, sharedPage) => {
+    const harness = makeControllerHarness();
+    harness.socketService.listShipsByOwner.mockImplementation((_request: unknown, callback: (response: any) => void) => {
+      callback({ success: true, ships: [{ id: 'ship-1', spatial: { positionKm: { x: 1, y: 2, z: 3 } } }] });
+      return harness.unsubscribeShipListResponse;
+    });
+    harness.socketService.listCelestialBodies.mockImplementation(
+      pagedResponder([firstPage, sharedPage], harness.unsubscribeCelestialBodyListResponse).impl,
+    );
+    harness.controller.seedAsteroidsForInProgressMission();
+    expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'unavailable', bodies: [] }),
+    );
+    expect(harness.emitColdBootAsteroidSeedIntent).not.toHaveBeenCalled();
   });
 
   describe('loadLocalCelestialBodies', () => {

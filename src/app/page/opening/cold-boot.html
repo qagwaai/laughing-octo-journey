@@ -27,7 +27,7 @@
 
   <section class="scan-action" [class.visible]="stage() >= 3" aria-label="Scanning mission action">
     <p>{{ t.opening.coldBoot.startScanningDescription }}</p>
-    <button type="button" class="scan-action-button" (click)="startScanning()" [disabled]="scanActionPending()">
+    <button type="button" class="scan-action-button" (click)="startScanning()" [disabled]="scanActionPending() || scanOutcomeUnknown()">
       {{ scanActionPending() ? t.opening.coldBoot.startScanningPendingLabel : t.opening.coldBoot.startScanningLabel }}
     </button>
     @if (scanActionError()) {

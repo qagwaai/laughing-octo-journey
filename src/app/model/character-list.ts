@@ -38,10 +38,21 @@ export interface PlayerCharacterSummary {
  * Socket response payload containing character summaries for a player.
  */
 export interface CharacterListResponse {
-  success: boolean;
+  success: true;
   message: string;
   correlationId: string;
   requestIdentity: CharacterListRequestIdentity;
   playerName: string;
   characters: PlayerCharacterSummary[];
 }
+
+export interface CharacterListFailure {
+  success: false;
+  message: string;
+  reason?: 'invalid_request' | 'invalid_session' | 'player_not_registered' | 'incomplete_roster' | 'outcome_unknown';
+  correlationId?: string;
+  requestIdentity?: CharacterListRequestIdentity;
+  clientError?: 'timeout' | 'invalid_response';
+}
+
+export type CharacterListResult = CharacterListResponse | CharacterListFailure;

@@ -4,6 +4,7 @@ import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import { AsteroidPersistenceService } from './asteroid-persistence.service';
 import type { ShipSceneAsteroidSample } from './ship-scene-types';
+import type { CelestialBodyListItem } from '../../model/celestial-body-list';
 
 describe('AsteroidPersistenceService', () => {
   let service: AsteroidPersistenceService;
@@ -114,5 +115,25 @@ describe('AsteroidPersistenceService', () => {
     expect(request.celestialBody.id).toBe(`cb-char-42-${FIRST_TARGET_MISSION_ID}-sample-a1`);
     expect(request.celestialBody.observability.scanState).toBe('scanned');
     expect(request.celestialBody.state).toBe('active');
+  });
+
+  it('preserves the server body identity and spatial epoch when recording a scan', () => {
+    const body: CelestialBodyListItem = {
+      id: 'cb-other-a1', catalogId: 'original', sourceScanId: 'sample-a1',
+      createdByCharacterId: 'other-character', bodyType: 'asteroid', surfaceArchetype: 'asteroid',
+      missionId: 'first-target', missionInstanceId: null,
+      createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z',
+      spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 9, y: 8, z: 7 }, epochMs: 42 },
+      observability: { visibility: 'visible', scanState: 'unscanned' },
+      state: 'unscanned', destroyedAt: null, destroyedReason: null, debrisSeed: null, debris: [],
+    };
+    service.persistScanComplete({ ...baseSample, serverCelestialBodyId: body.id, serverCelestialBody: body });
+    const request = socketService.upsertCelestialBody.mock.calls[0][0];
+    expect(request.createdByCharacterId).toBe('char-42');
+    expect(request.celestialBody).toMatchObject({
+      id: body.id, catalogId: body.catalogId, createdByCharacterId: 'other-character',
+      createdAt: body.createdAt, spatial: body.spatial, state: 'active',
+      observability: { visibility: 'visible', scanState: 'scanned' },
+    });
   });
 });

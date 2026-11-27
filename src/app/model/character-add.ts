@@ -30,4 +30,5 @@ export interface CharacterAddResponse {
   playerName: string;
   characterName?: string;
   characterId?: string;
+  clientError?: 'timeout' | 'invalid_response';
 }

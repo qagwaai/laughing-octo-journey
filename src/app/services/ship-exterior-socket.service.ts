@@ -175,26 +175,11 @@ export class ShipExteriorSocketService {
     };
   }
 
-  private matchesCelestialBodyListRequestIdentity(
-    left: CelestialBodyListRequestIdentity | undefined,
-    right: CelestialBodyListRequestIdentity | undefined,
-  ): boolean {
-    if (!left || !right) {
-      return false;
-    }
-
-    return (
-      this.normalizeIdentityValue(left.operation) === this.normalizeIdentityValue(right.operation) &&
-      this.normalizeIdentityValue(left.entityType) === this.normalizeIdentityValue(right.entityType) &&
-      this.normalizeIdentityValue(left.containerId) === this.normalizeIdentityValue(right.containerId)
-    );
-  }
-
   private isCelestialBodyListResponseForRequest(
     response: CelestialBodyListResponse,
     expectedCorrelationId: string,
     expectedRequestIdentity: CelestialBodyListRequestIdentity,
-    _expectedRequest: CelestialBodyListRequest,
+    expectedRequest: CelestialBodyListRequest,
   ): boolean {
     const responseCorrelationId = response.correlationId?.trim() ?? '';
     if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
@@ -205,7 +190,11 @@ export class ShipExteriorSocketService {
       return false;
     }
 
-    return this.matchesCelestialBodyListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+    return response.playerName === expectedRequest.playerName &&
+      response.solarSystemId === expectedRequest.solarSystemId &&
+      response.requestIdentity.operation === expectedRequestIdentity.operation &&
+      response.requestIdentity.entityType === expectedRequestIdentity.entityType &&
+      response.requestIdentity.containerId === expectedRequestIdentity.containerId;
   }
 
   private buildDefaultItemListByLocationRequestIdentity(
@@ -426,7 +415,7 @@ export class ShipExteriorSocketService {
     request: ShipListByOwnerRequest,
     onResponse: (response: ShipListByOwnerResponse) => void,
   ): () => void {
-    const expectedCorrelationId = request.correlationId?.trim() || createCorrelationId('ship-list-by-owner');
+    const expectedCorrelationId = createUuidCorrelationId();
     const expectedRequestIdentity = request.requestIdentity ?? this.buildDefaultShipListByOwnerRequestIdentity(request);
     const requestWithCorrelation: ShipListByOwnerRequest = {
       ...request,
@@ -649,11 +638,10 @@ export class ShipExteriorSocketService {
           onResponse(response);
           return;
         }
-        // Drop contract-invalid bodies individually; rejecting the whole page would stall paging callers.
         const validBodies = response.celestialBodies.filter((body) => {
           const bodyError = validateCanonicalBodyClassification(body);
           if (bodyError) {
-            appLogger.error('[celestial-body-contract] Skipping invalid celestial body.', bodyError);
+            appLogger.error('[celestial-body-contract] Invalid celestial body in list response.', bodyError);
             return false;
           }
           return true;
@@ -661,7 +649,7 @@ export class ShipExteriorSocketService {
         onResponse(
           validBodies.length === response.celestialBodies.length
             ? response
-            : { ...response, celestialBodies: validBodies },
+            : { ...response, success: false, message: 'Invalid celestial body in list response.', celestialBodies: [] },
         );
       },
     );

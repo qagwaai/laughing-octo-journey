@@ -30,3 +30,15 @@ export interface GameJoinResponse {
   playerName: string;
   characterId: string;
 }
+
+export interface GameJoinUnavailableResponse extends GameJoinResponse {
+  success: false;
+  availability: 'unavailable';
+  reason: 'startup_not_verified';
+}
+
+export type GameJoinResult = GameJoinResponse | GameJoinUnavailableResponse | {
+  success: false;
+  message: string;
+  clientError: 'timeout' | 'invalid_response';
+};

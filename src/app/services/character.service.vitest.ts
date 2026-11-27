@@ -22,9 +22,11 @@ import {
   CHARACTER_LIST_RESPONSE_EVENT,
   type CharacterListRequest,
   type CharacterListResponse,
+  type CharacterListResult,
 } from '../model/character-list';
 import { CharacterService } from './character.service';
 import { SocketService } from './socket.service';
+import { SessionService } from './session.service';
 
 type Listener = (payload: unknown) => void;
 
@@ -74,6 +76,9 @@ describe('CharacterService', () => {
       providers: [CharacterService, { provide: SocketService, useValue: socketService }],
     });
     service = TestBed.inject(CharacterService);
+    const session = TestBed.inject(SessionService);
+    session.setSessionKey('session-1');
+    session.setPlayerId('player-1');
   });
 
   it('emits character-add requests with correlation metadata and ignores mismatched responses', () => {
@@ -93,11 +98,10 @@ describe('CharacterService', () => {
       data: expect.objectContaining({
         ...request,
         correlationId: expect.any(String),
-        correlationSource: 'character-service.addCharacter',
         requestIdentity: {
           operation: 'character-add',
           entityType: 'character',
-          containerId: 'player-pioneer',
+          containerId: 'player-1',
         },
       }),
     });
@@ -174,7 +178,7 @@ describe('CharacterService', () => {
     expect(socketService.listenerCount(CHARACTER_ADD_RESPONSE_EVENT)).toBe(0);
   });
 
-  it('matches character-add fallback responses by normalized names when correlation metadata is absent', () => {
+  it('ignores character-add responses without matching metadata', () => {
     let received: CharacterAddResponse | undefined;
     const request: CharacterAddRequest = {
       playerName: 'Pioneer',
@@ -193,15 +197,8 @@ describe('CharacterService', () => {
       characterName: 'nyx',
     } as CharacterAddResponse);
 
-    expect(received).toEqual(
-      expect.objectContaining({
-        success: true,
-        message: 'ok',
-        playerName: '  pioneer  ',
-        characterName: 'nyx',
-      }),
-    );
-    expect(socketService.listenerCount(CHARACTER_ADD_RESPONSE_EVENT)).toBe(0);
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(CHARACTER_ADD_RESPONSE_EVENT)).toBe(1);
   });
 
   it('rejects character-add fallback response when character name does not match', () => {
@@ -228,7 +225,7 @@ describe('CharacterService', () => {
     expect(socketService.listenerCount(CHARACTER_ADD_RESPONSE_EVENT)).toBe(1);
   });
 
-  it('preserves provided add-character correlation metadata when present', () => {
+  it('uses a fresh UUID and authenticated player identity for creation', () => {
     const request: CharacterAddRequest = {
       playerName: 'Pioneer',
       characterName: 'Nyx',
@@ -245,12 +242,12 @@ describe('CharacterService', () => {
     service.addCharacter(request, () => {});
 
     const emitted = socketService.emittedEvents[0]?.data as CharacterAddRequest;
-    expect(emitted.correlationId).toBe('custom-add-correlation');
-    expect(emitted.correlationSource).toBe('custom-source');
+    expect(emitted.correlationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    expect(emitted.correlationSource).toBeUndefined();
     expect(emitted.requestIdentity).toEqual({
       operation: 'character-add',
       entityType: 'character',
-      containerId: 'custom-container',
+      containerId: 'player-1',
     });
   });
 
@@ -370,7 +367,7 @@ describe('CharacterService', () => {
   });
 
   it('emits character-list requests with correlation metadata and ignores mismatched responses', () => {
-    let received: CharacterListResponse | undefined;
+    let received: CharacterListResult | undefined;
     const request: CharacterListRequest = {
       playerName: 'Pioneer',
       sessionKey: 'session-1',
@@ -385,7 +382,6 @@ describe('CharacterService', () => {
       data: expect.objectContaining({
         ...request,
         correlationId: expect.any(String),
-        correlationSource: 'character-service.listCharacters',
         requestIdentity: {
           operation: 'character-list',
           entityType: 'character',
@@ -413,7 +409,7 @@ describe('CharacterService', () => {
       correlationId: requestPayload.correlationId!,
       requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
-      characters: [{ id: 'char-1', characterName: 'Nyx' }],
+      characters: [{ id: 'char-1', characterName: 'Nyx', credits: 0, creditLedger: [], missions: [] }],
     };
 
     socketService.trigger(CHARACTER_LIST_RESPONSE_EVENT, response);
@@ -422,8 +418,8 @@ describe('CharacterService', () => {
     expect(socketService.listenerCount(CHARACTER_LIST_RESPONSE_EVENT)).toBe(0);
   });
 
-  it('matches character-list fallback responses by normalized player name without correlation metadata', () => {
-    let received: CharacterListResponse | undefined;
+  it('ignores character-list responses without correlation metadata', () => {
+    let received: CharacterListResult | undefined;
     service.listCharacters(
       {
         playerName: 'Pioneer',
@@ -441,14 +437,8 @@ describe('CharacterService', () => {
       characters: [],
     } as unknown as CharacterListResponse);
 
-    expect(received).toEqual(
-      expect.objectContaining({
-        success: true,
-        message: 'ok',
-        playerName: ' pioneer ',
-      }),
-    );
-    expect(socketService.listenerCount(CHARACTER_LIST_RESPONSE_EVENT)).toBe(0);
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(CHARACTER_LIST_RESPONSE_EVENT)).toBe(1);
   });
 
   it('emits character-delete requests with correlation metadata and ignores mismatched responses', () => {

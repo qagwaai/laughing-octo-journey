@@ -31,8 +31,17 @@ describe('mapLocalCelestialBodiesToSamples', () => {
     const [sample] = mapLocalCelestialBodiesToSamples([buildBody()], center);
 
     expect(sample.serverCelestialBodyId).toBe('body-1');
+    expect(sample.id).toBe('body-1');
     expect(sample.solarSystemLocation.positionKm).toEqual({ x: 110, y: 20, z: -5 });
     expect(sample.clusterCenterKm).toEqual(center);
+  });
+
+  it('distinguishes shared bodies with the same source scan ID', () => {
+    const samples = mapLocalCelestialBodiesToSamples([
+      buildBody({ id: 'one', sourceScanId: 'sample-a1' }),
+      buildBody({ id: 'two', sourceScanId: 'sample-a1' }),
+    ], center);
+    expect(samples.map((sample) => sample.id)).toEqual(['one', 'two']);
   });
 
   it('should return an empty list when the backend reported no bodies', () => {

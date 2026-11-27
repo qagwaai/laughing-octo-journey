@@ -41,7 +41,7 @@ export function mapLocalCelestialBodiesToSamples(
 ): AsteroidScanSample[] {
   return bodies
     .filter((body) => body.state !== 'destroyed' && !!body.spatial?.positionKm)
-    .map((body, index) => {
+    .map((body) => {
       const positionKm = body.spatial.positionKm;
       const basePosition: [number, number, number] = [
         roundRenderUnit(positionKm.x - centerKm.x),
@@ -52,11 +52,12 @@ export function mapLocalCelestialBodiesToSamples(
       const scanned = body.observability?.scanState === 'scanned';
       const capturedKinematics = resolveKinematics(body);
       const revealedMaterial = body.composition ?? null;
-      const sampleId = body.sourceScanId?.trim() || body.id || `local-body-${index + 1}`;
+      const sampleId = body.id;
 
       return {
         id: sampleId,
         serverCelestialBodyId: body.id,
+        serverCelestialBody: body,
         meshProfileKey: body.meshProfileKey ?? null,
         estimatedDiameterM: capturedKinematics.estimatedDiameterM,
         sw13bSeedId: null,

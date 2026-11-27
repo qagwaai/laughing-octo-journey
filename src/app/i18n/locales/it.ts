@@ -175,6 +175,9 @@ export const it: DeepPartial<EnLocale> = {
         requiredFields: 'Nome giocatore e password sono obbligatori.',
         playerNotRegistered: 'Il nome giocatore non e registrato. Registrati prima.',
         passwordMismatch: 'La password non corrisponde al nome giocatore.',
+        invalidCredentials: 'Nome giocatore o password non validi.',
+        invalidResponse: 'Il server ha restituito una risposta non valida. Esito non confermato; non riprovare automaticamente.',
+        outcomeUnknown: 'Nessuna risposta ricevuta. Account o sessione potrebbero essere cambiati; non riprovare automaticamente.',
       },
     },
     registration: {
@@ -200,6 +203,7 @@ export const it: DeepPartial<EnLocale> = {
       emptyState: 'Nessun personaggio ancora caricato.',
       joinLabel: 'Entra nel gioco',
       joinInProgressLabel: 'Continua partita',
+      joiningLabel: 'Accesso in corso...',
       editLabel: 'Modifica',
       deleteLabel: 'Elimina',
       bustThumbnailAlt: 'Ritratto del personaggio',
@@ -212,9 +216,15 @@ export const it: DeepPartial<EnLocale> = {
       },
       errors: {
         loadCharactersRequiresPlayer: 'Il nome giocatore e obbligatorio per caricare i personaggi.',
+        responseTimeout: 'Selezione dei personaggi scaduta. Riprova esplicitamente dopo il ripristino della connessione.',
+        invalidResponse: 'Il server ha restituito dati di selezione dei personaggi non validi.',
         deleteRequiresPlayer: 'Il nome giocatore e obbligatorio per eliminare un personaggio.',
         joinRequiresPlayer: 'Il nome giocatore e obbligatorio per entrare nel gioco.',
         joinRequiresCharacterId: "L'id del personaggio e obbligatorio per entrare nel gioco.",
+        joinRequiresSession: 'La sessione e cambiata. Accedi nuovamente prima di entrare nel gioco.',
+        joinTimeout: "L'accesso al gioco e scaduto; l'esito non e confermato. Nessun tentativo automatico e stato inviato.",
+        joinInvalidResponse: 'Il server ha restituito una risposta di accesso al gioco non valida.',
+        joinShipUnavailable: 'Impossibile caricare la nave attiva. Il gioco non e stato aperto.',
       },
     },
     setup: {
@@ -291,6 +301,8 @@ export const it: DeepPartial<EnLocale> = {
       messages: {
         saveRequiresPlayer: 'Il nome giocatore e obbligatorio per salvare un personaggio.',
         editRequiresCharacterId: "L'id del personaggio e obbligatorio per modificare un personaggio.",
+        creationRequiresLogin: 'Accedi di nuovo prima di creare un personaggio.',
+        creationOutcomeUnknown: 'Il personaggio potrebbe essere stato creato. Controlla la lista prima di riprovare.',
         starterShipInitPending: 'Personaggio creato, ma inizializzazione della nave starter in attesa.',
         starterShipResolvePending: 'Personaggio creato, ma la nave starter non e ancora risolvibile.',
         starterShipMissingRecord: 'Personaggio creato, ma non e stato restituito alcun record nave starter.',
@@ -1122,7 +1134,7 @@ export const it: DeepPartial<EnLocale> = {
         'La scansione dei sensori non ha rilevato corpi celesti. Viaggia più lontano o potenzia il tuo array di sensori.',
       sensorsUnavailableTitle: 'Scansione sensori non disponibile',
       sensorsUnavailableDetail:
-        'Impossibile raggiungere la rete di navigazione. I contatti locali non possono essere risolti.',
+        'Impossibile risolvere i contatti locali. Controlla la connessione o richiedi una riconciliazione.',
     },
   },
   opening: {
@@ -1133,6 +1145,7 @@ export const it: DeepPartial<EnLocale> = {
       startScanningLabel: 'Avvia scansione?',
       startScanningPendingLabel: 'Avvio scansione...',
       startScanningErrorLabel: 'Trasferimento scansione fallito. Riprova quando le comunicazioni si stabilizzano.',
+      startScanningOutcomeUnknown: 'La missione potrebbe essere stata attivata. Verifica la missione e il campo prima di riprovare.',
       enableAudioHooksLabel: 'Abilita hook audio',
       disableAudioHooksLabel: 'Disabilita hook audio',
       audioStatusTitle: 'Stato audio',

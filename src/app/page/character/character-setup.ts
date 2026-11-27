@@ -24,17 +24,12 @@ import { writeCachedCharacterBustDescriptor } from '../../model/character-bust-c
 import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { normalizeCharacterName, pickSuggestedCharacterName } from '../../model/character-name-suggestions';
-import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
-import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
-import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { CharacterBustPreviewStateService } from '../../services/character-bust-preview-state.service';
 import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
-import { ShipService } from '../../services/ship.service';
-import { SocketService } from '../../services/socket.service';
 import { resolveNavigationState } from '../navigation-state';
 
 interface CharacterSetupNavigationState {
@@ -45,7 +40,6 @@ interface CharacterSetupNavigationState {
 }
 
 const LAST_CHARACTER_NAME_SUGGESTION_STORAGE_KEY = 'character.setup.lastSuggestedName';
-const STARTER_SHIP_PROVISIONING_TIMEOUT_MS = 3000;
 const BUST_DEFAULT_PRESET_VERSION = 'sw-15-m2-a-v1';
 
 const DEFAULT_BUST_DESCRIPTOR: BustDescriptorInput = {
@@ -82,8 +76,6 @@ export default class CharacterSetupPage implements OnDestroy {
   private bustAdapter = inject(BustDescriptorAdapterService);
   private previewState = inject(CharacterBustPreviewStateService);
   private gameSessionService = inject(GameSessionService);
-  private socketService = inject(SocketService);
-  private shipService = inject(ShipService);
   private sessionService = inject(SessionService);
   private unsubscribeAddResponse?: () => void;
   private unsubscribeInvalidSession?: () => void;
@@ -122,6 +114,7 @@ export default class CharacterSetupPage implements OnDestroy {
   protected errorMessage = signal<string | null>(null);
   protected warningMessage = signal<string | null>(null);
   protected isSubmitting = signal(false);
+  protected creationOutcomeUnknown = signal(false);
   protected pendingBustCharacterId = signal<string | null>(null);
   protected bustValidationErrors = signal<Array<{ field: string; reason: string; rejectedValue: unknown }>>([]);
   protected bustBlockedSave = signal<BustBlockedSaveResponse | null>(null);
@@ -200,6 +193,7 @@ export default class CharacterSetupPage implements OnDestroy {
    * Validates form input and dispatches add/edit character request flow.
    */
   saveCharacter(): void {
+    if (this.isSubmitting() || this.creationOutcomeUnknown()) return;
     const candidateName = this.characterForm.value.characterName ?? '';
     if (this.hasDuplicateCharacterName(candidateName)) {
       this.characterForm.get('characterName')?.markAsTouched();
@@ -231,6 +225,11 @@ export default class CharacterSetupPage implements OnDestroy {
     this.unsubscribeAddResponse?.();
 
     const isEditMode = this.isEditMode();
+    if (!isEditMode && !this.sessionService.getPlayerId()?.trim()) {
+      this.isSubmitting.set(false);
+      this.errorMessage.set(this.t.character.setup.messages.creationRequiresLogin);
+      return;
+    }
     if (isEditMode) {
       const editCharacter = this.editCharacter();
       if (!editCharacter?.id) {
@@ -265,14 +264,14 @@ export default class CharacterSetupPage implements OnDestroy {
 
         this.navigateToCharacterList();
 
-        if (!isEditMode) {
-          const addResponse = response as CharacterAddResponse;
-          void this.createStarterShipForCharacter(addResponse.characterId);
-        }
       } else {
         this.isSaved.set(false);
         this.successMessage.set(null);
         this.errorMessage.set(response.message);
+        if (!isEditMode) {
+          this.creationOutcomeUnknown.set(true);
+          this.warningMessage.set(this.t.character.setup.messages.creationOutcomeUnknown);
+        }
       }
       this.unsubscribeAddResponse?.();
     };
@@ -367,94 +366,6 @@ export default class CharacterSetupPage implements OnDestroy {
       if (!this.bustBlockedSave() && this.bustValidationErrors().length === 0) {
         this.navigateToCharacterList();
       }
-    });
-  }
-
-  /**
-   * Resolves starter ship and applies deterministic starter configuration/items.
-   */
-  private createStarterShipForCharacter(characterId?: string): Promise<void> {
-    return new Promise((resolve) => {
-      let finished = false;
-      const finish = (): void => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        resolve();
-      };
-
-      const timeout = window.setTimeout(() => {
-        appLogger.warn('Starter ship provisioning timed out before confirmation callback.');
-        this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
-        finish();
-      }, STARTER_SHIP_PROVISIONING_TIMEOUT_MS);
-
-      const finishAndClearTimeout = (): void => {
-        window.clearTimeout(timeout);
-        finish();
-      };
-
-      const playerName = this.playerName().trim();
-      const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-      const resolvedCharacterId = characterId?.trim() ?? '';
-
-      if (!playerName || !sessionKey || !resolvedCharacterId) {
-        appLogger.warn('Skipping starter ship upsert due to missing character context.');
-        this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
-        finishAndClearTimeout();
-        return;
-      }
-
-      const followupRequest: ShipListByOwnerRequest = {
-        playerName,
-        sessionKey,
-        owner: {
-          ownerType: 'player-character',
-          characterId: resolvedCharacterId,
-        },
-      };
-      this.shipService.listShipsByOwner(followupRequest, (response: ShipListByOwnerResponse) => {
-        if (!response.success) {
-          appLogger.warn('Unable to resolve starter ship from ship-list:', response.message);
-          this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
-          finishAndClearTimeout();
-          return;
-        }
-
-        const starterShipId = response.ships?.[0]?.id?.trim();
-        if (!starterShipId) {
-          appLogger.warn('Starter ship id was not returned by ship-list response.');
-          this.warningMessage.set(this.t.character.setup.messages.starterShipMissingRecord);
-          finishAndClearTimeout();
-          return;
-        }
-
-        const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
-        this.socketService.upsertShip(
-          {
-            playerName,
-            characterId: resolvedCharacterId,
-            sessionKey,
-            ship: shipUpdate,
-          },
-          (upsertResponse: ShipUpsertResponse) => {
-            if (!upsertResponse.success) {
-              appLogger.warn('Starter ship upsert failed:', upsertResponse.message);
-              this.warningMessage.set(this.t.character.setup.messages.starterShipUpdateFailed);
-              finishAndClearTimeout();
-              return;
-            }
-
-            if (!Array.isArray(upsertResponse.ship?.inventory)) {
-              appLogger.warn('Starter ship upsert did not include backend inventory payload.');
-            }
-
-            this.warningMessage.set(null);
-            finishAndClearTimeout();
-          },
-        );
-      });
     });
   }
 

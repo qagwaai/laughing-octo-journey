@@ -3,6 +3,7 @@ import type {
   NavigationDirectReference,
   NavigationDriveProfile,
   NavigationRouteBatchResponse,
+  NavigationRouteBatchUnavailableResponse,
   NavigationRouteCapture,
   NavigationRouteJob,
   NavigationRouteMode,
@@ -28,6 +29,37 @@ const AU_KM = 149_597_870.7;
 const ROUTE_PROFILE: NavigationRouteProfileId = 'stellar-sol-station-100au-v1';
 const SEARCH_TIMEOUT_MS = 30_000;
 const SEARCH_JOB_LIMIT = 512;
+
+function isUnavailableResponse(
+  response: NavigationRouteBatchResponse,
+): response is NavigationRouteBatchUnavailableResponse {
+  if (
+    !('availability' in response) ||
+    response.availability !== 'unavailable' ||
+    response.success !== false ||
+    response.message !== 'Game unavailable' ||
+    !('reason' in response) ||
+    response.reason !== 'startup_not_verified' ||
+    Object.keys(response).some(
+      (key) => !['success', 'message', 'availability', 'reason', 'correlationId', 'requestIdentity'].includes(key),
+    ) ||
+    (response.correlationId !== undefined &&
+      (typeof response.correlationId !== 'string' || !/\S/.test(response.correlationId)))
+  ) {
+    return false;
+  }
+
+  const identity = response.requestIdentity;
+  return (
+    identity === undefined ||
+    (identity !== null &&
+      typeof identity === 'object' &&
+      Object.keys(identity).length === 3 &&
+      identity.operation === 'navigation-route-edge-batch' &&
+      identity.entityType === 'solar-system' &&
+      identity.containerId === 'sol')
+  );
+}
 
 function validEpoch(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 946_684_800_000 && value < 4_102_444_800_000;
@@ -422,6 +454,10 @@ export class NavigationRouteSearchService {
       const expected = new Map(jobs.map((job) => [job.jobId, job]));
       this.unsubscribe = this.socket.on(RESPONSE_EVENT, (response: NavigationRouteBatchResponse) => {
         if (sequence !== this.sequence || response?.correlationId !== correlationId) return;
+        if (isUnavailableResponse(response)) {
+          fail(response.reason, response.message);
+          return;
+        }
         this.unsubscribe?.();
         this.unsubscribe = null;
         if (

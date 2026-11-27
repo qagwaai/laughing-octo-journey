@@ -17,7 +17,6 @@ import {
   supportedLocaleCodes,
   type SupportedLocaleCode,
 } from '../../i18n/locale';
-import { LoginRequest, LoginResponse } from '../../model/login';
 import { RegisterRequest, RegisterResponse } from '../../model/register';
 import { clearRememberedPlayerHandle, writeRememberedPlayerHandle } from '../../model/remembered-player-handle';
 import { AuthService } from '../../services/auth.service';
@@ -45,7 +44,7 @@ export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): Val
   imports: [ReactiveFormsModule, ExternalAnchorsComponent],
 })
 /**
- * Registration page that creates accounts and initializes session state on success.
+ * Registration page that creates accounts before a separate explicit login.
  */
 export default class RegistrationPage implements OnDestroy {
   protected readonly t = locale;
@@ -55,7 +54,6 @@ export default class RegistrationPage implements OnDestroy {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private unsubscribeRegisterResponse?: () => void;
-  private unsubscribeLoginResponse?: () => void;
   private navigationState: RegistrationNavigationState = resolveNavigationState<RegistrationNavigationState>(
     this.router,
   );
@@ -85,6 +83,7 @@ export default class RegistrationPage implements OnDestroy {
    * Validates registration form and submits account creation request.
    */
   submit(): void {
+    if (this.isSubmitting()) return;
     if (this.registrationForm.invalid) {
       this.registrationForm.markAllAsTouched();
       return;
@@ -115,9 +114,9 @@ export default class RegistrationPage implements OnDestroy {
     this.successMessage.set(null);
     this.errorMessage.set(null);
     this.unsubscribeRegisterResponse?.();
-    this.unsubscribeLoginResponse?.();
 
     this.unsubscribeRegisterResponse = this.authService.register(request, (response: RegisterResponse) => {
+      this.isSubmitting.set(false);
       if (response.success) {
         this.successMessage.set(response.message);
         if (rememberHandle === true) {
@@ -126,33 +125,11 @@ export default class RegistrationPage implements OnDestroy {
           clearRememberedPlayerHandle();
         }
 
-        const loginRequest: LoginRequest = {
-          playerName: request.playerName,
-          password: request.password,
-          locale: request.locale,
-        };
-
-        this.unsubscribeLoginResponse?.();
-        this.unsubscribeLoginResponse = this.authService.login(loginRequest, (loginResponse: LoginResponse) => {
-          this.isSubmitting.set(false);
-
-          if (loginResponse.success) {
-            if (loginResponse.sessionKey) {
-              this.sessionService.setSessionKey(loginResponse.sessionKey);
-            }
-            this.sessionService.setPlayerName(request.playerName);
-
-            this.router.navigate([{ outlets: { left: ['character-list'] } }], {
-              preserveFragment: true,
-              state: { playerName: request.playerName },
-            });
-            this.registrationForm.reset();
-          } else {
-            this.successMessage.set(null);
-            this.errorMessage.set(loginResponse.message);
-          }
-
-          this.unsubscribeLoginResponse?.();
+        this.sessionService.clearSession();
+        this.registrationForm.reset();
+        this.router.navigate([{ outlets: { left: ['login'] } }], {
+          preserveFragment: true,
+          state: { preferredLocale: request.locale },
         });
       } else {
         this.isSubmitting.set(false);
@@ -181,6 +158,5 @@ export default class RegistrationPage implements OnDestroy {
 
   ngOnDestroy(): void {
     this.unsubscribeRegisterResponse?.();
-    this.unsubscribeLoginResponse?.();
   }
 }

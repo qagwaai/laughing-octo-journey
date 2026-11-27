@@ -117,6 +117,30 @@ export class AsteroidPersistenceService {
         })
       : undefined;
 
+    if (sample.serverCelestialBody) {
+      const body = sample.serverCelestialBody;
+      this.socketService.upsertCelestialBody({
+        sessionKey,
+        playerName,
+        createdByCharacterId: characterId,
+        requestIdentity: {
+          operation: 'scan-complete',
+          entityType: 'celestial-body',
+          containerId: sample.id,
+          characterId,
+        },
+        celestialBody: {
+          ...body,
+          missionId: body.missionId ?? undefined,
+          updatedAt: nowIso,
+          composition,
+          observability: { ...body.observability, scanState: 'scanned' },
+          state: composition ? 'active' : 'unscanned',
+        },
+      });
+      return;
+    }
+
     const request: CelestialBodyUpsertRequest = {
       sessionKey,
       playerName,

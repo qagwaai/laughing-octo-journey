@@ -20,6 +20,8 @@ export interface MockSessionService {
   readonly missionEntryContext: { playerName: string; joinCharacter: PlayerCharacterSummary } | null;
   setSessionKey(key: string): void;
   getSessionKey(): string | null;
+  setPlayerId(id: string): void;
+  getPlayerId(): string | null;
   clearSession(): void;
   hasSession(): boolean;
   setActiveShip(ship: ShipSummary): void;
@@ -36,7 +38,7 @@ export interface MockSessionService {
 }
 
 export function createMockSessionService(initialKey: string | null = null): MockSessionService {
-  const state = { key: initialKey };
+  const state: { key: string | null; playerId: string | null } = { key: initialKey, playerId: null };
   const activeShip = createSignal<ShipSummary | null>(null);
   const activeCharacter = createSignal<PlayerCharacterSummary | null>(null);
   const playerNameState = createSignal<string | null>(null);
@@ -62,8 +64,15 @@ export function createMockSessionService(initialKey: string | null = null): Mock
     getSessionKey() {
       return state.key;
     },
+    setPlayerId(id: string) {
+      state.playerId = id;
+    },
+    getPlayerId() {
+      return state.playerId;
+    },
     clearSession() {
       state.key = null;
+      state.playerId = null;
       activeShip.set(null);
       activeCharacter.set(null);
       missionEntryContextState.set(null);

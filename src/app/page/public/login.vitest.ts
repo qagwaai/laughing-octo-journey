@@ -51,6 +51,15 @@ describe('LoginPage', () => {
     setActiveLocaleCode('en');
     window.localStorage.removeItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY);
     socketService = createMockSocketService();
+    const trigger = socketService.triggerEvent;
+    socketService.triggerEvent = (event, data: LoginResponse) => {
+      const request = socketService.emittedEvents.at(-1)?.data as { correlationId?: string } | undefined;
+      trigger(event, {
+        ...(data.success ? { playerId: 'player-1', sessionKey: 'session-1' } : {}),
+        ...data,
+        correlationId: request?.correlationId,
+      });
+    };
     sessionService = createMockSessionService();
   });
 
@@ -125,6 +134,7 @@ describe('LoginPage', () => {
         playerName: 'Pioneer',
         password: 'password123',
         locale: 'it',
+        correlationId: expect.any(String),
       });
     });
 
@@ -205,7 +215,7 @@ describe('LoginPage', () => {
         socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
           success: false,
           message: 'Wrong password.',
-          reason: 'PASSWORD_MISMATCH',
+          reason: 'invalid_credentials',
         } satisfies LoginResponse);
 
         expect(window.localStorage.getItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY)).toBe('OldPilot');
@@ -250,6 +260,7 @@ describe('LoginPage', () => {
       socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
         success: true,
         message: 'Login successful.',
+        sessionKey: '',
       } satisfies LoginResponse);
 
       expect(sessionService.storedKey).toBeNull();
@@ -261,13 +272,13 @@ describe('LoginPage', () => {
       socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
         success: false,
         message: 'No such player.',
-        reason: 'PLAYER_NOT_REGISTERED',
+        reason: 'invalid_credentials',
       } satisfies LoginResponse);
 
-      expect(component['errorMessage']()).toBe('Player name is not registered. Please register first.');
+      expect(component['errorMessage']()).toBe('Invalid player name or password.');
       expect(component['successMessage']()).toBeNull();
       expect(component['isSubmitting']()).toBe(false);
-      expect(component['canNavigateToRegister']()).toBe(true);
+      expect(component['canNavigateToRegister']()).toBe(false);
     });
 
     it('should handle password mismatch failure', () => {
@@ -276,10 +287,10 @@ describe('LoginPage', () => {
       socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
         success: false,
         message: 'Wrong password.',
-        reason: 'PASSWORD_MISMATCH',
+        reason: 'invalid_credentials',
       } satisfies LoginResponse);
 
-      expect(component['errorMessage']()).toBe('Password does not match the player name.');
+      expect(component['errorMessage']()).toBe('Invalid player name or password.');
       expect(component['successMessage']()).toBeNull();
       expect(component['isSubmitting']()).toBe(false);
       expect(component['canNavigateToRegister']()).toBe(false);
@@ -291,7 +302,7 @@ describe('LoginPage', () => {
       socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
         success: false,
         message: 'Service unavailable.',
-        reason: 'UNKNOWN',
+        reason: 'unavailable',
       } satisfies LoginResponse);
 
       expect(component['errorMessage']()).toBe('Service unavailable.');
@@ -304,10 +315,10 @@ describe('LoginPage', () => {
       socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
         success: false,
         message: 'No such player.',
-        reason: 'PLAYER_NOT_REGISTERED',
+        reason: 'invalid_credentials',
       } satisfies LoginResponse);
 
-      expect(component['canNavigateToRegister']()).toBe(true);
+      expect(component['canNavigateToRegister']()).toBe(false);
 
       submitForm(component);
       socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {

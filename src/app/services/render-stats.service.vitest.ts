@@ -52,7 +52,7 @@ describe('RenderStatsService', () => {
     TestBed.inject(RenderStatsService).setEnabled(true);
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({});
-    expect(TestBed.inject(SessionService).hasSession()).toBe(true);
+    expect(TestBed.inject(SessionService).hasSession()).toBe(false);
     expect(TestBed.inject(RenderStatsService).enabled()).toBe(false);
   });
 });

@@ -324,7 +324,9 @@ describe('ColdBootOpeningPage', () => {
 
     expect(mockSession.activeShip()).toBeNull();
     expect(mockRouter.navigate).not.toHaveBeenCalled();
-    expect(component['scanActionError']()).toBe('Scanning handoff failed. Retry after comms stabilize.');
+    expect(component['scanActionError']()).toContain('Mission activation may have been recorded');
+    await component['startScanning']();
+    expect(mockMission.upsertMissionStatus).toHaveBeenCalledTimes(1);
     expect(component['scanActionPending']()).toBe(false);
   });
 });

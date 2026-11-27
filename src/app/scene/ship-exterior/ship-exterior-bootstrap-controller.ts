@@ -65,6 +65,7 @@ export class ShipExteriorBootstrapController {
    * contract variance warning. Identical in-flight sweeps are therefore coalesced.
    */
   private pendingLocalSweepSignature: string | null = null;
+  private fieldRequestGeneration = 0;
 
   constructor(private readonly deps: ShipExteriorBootstrapControllerDeps) {}
 
@@ -81,6 +82,8 @@ export class ShipExteriorBootstrapController {
   loadLocalCelestialBodies(centerOverrideKm?: Triple | null): void {
     const playerName = this.deps.getPlayerName().trim();
     const sessionKey = this.deps.sessionService.getSessionKey()?.trim() ?? '';
+    const characterId = this.deps.getCharacterId()?.trim() ?? '';
+    const shipId = this.deps.getPreferredShipId()?.trim() ?? '';
     const detectionRangeKm = this.deps.getDetectionRangeKm();
 
     const resolveCenter = (): Triple | null => {
@@ -92,6 +95,11 @@ export class ShipExteriorBootstrapController {
 
     const center = resolveCenter();
     if (!playerName || !sessionKey || !center) {
+      this.fieldRequestGeneration += 1;
+      this.unsubscribeShipListResponse?.();
+      this.unsubscribeCelestialBodyListResponse?.();
+      this.unsubscribeLocalCelestialBodyListResponse?.();
+      this.pendingLocalSweepSignature = null;
       this.deps.emitLocalCelestialBodies({
         status: 'unavailable',
         bodies: [],
@@ -109,11 +117,14 @@ export class ShipExteriorBootstrapController {
     const solarSystemId =
       this.deps.sessionService.activeShip()?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
 
-    const sweepSignature = `${solarSystemId}|${center.x},${center.y},${center.z}|${detectionRangeKm}`;
+    const sweepSignature = `${playerName}|${characterId}|${shipId}|${solarSystemId}|${center.x},${center.y},${center.z}|${detectionRangeKm}`;
     if (this.pendingLocalSweepSignature === sweepSignature) {
       return;
     }
 
+    const generation = ++this.fieldRequestGeneration;
+    this.unsubscribeShipListResponse?.();
+    this.unsubscribeCelestialBodyListResponse?.();
     this.unsubscribeLocalCelestialBodyListResponse?.();
     this.pendingLocalSweepSignature = sweepSignature;
 
@@ -130,8 +141,15 @@ export class ShipExteriorBootstrapController {
       request,
       'ship-exterior.local-sweep',
       (outcome) => {
+        if (generation !== this.fieldRequestGeneration) return;
         this.pendingLocalSweepSignature = null;
         this.unsubscribeLocalCelestialBodyListResponse = undefined;
+        if (
+          this.deps.getPlayerName().trim() !== playerName ||
+          (this.deps.getCharacterId()?.trim() ?? '') !== characterId ||
+          (this.deps.getPreferredShipId()?.trim() ?? '') !== shipId ||
+          (this.deps.sessionService.getSessionKey()?.trim() ?? '') !== sessionKey
+        ) return;
 
         if (outcome.status === 'failed') {
           this.deps.emitLocalCelestialBodies({
@@ -192,17 +210,28 @@ export class ShipExteriorBootstrapController {
       return candidates[0];
     }
 
-    return candidates.find((ship) => this.normalizeShipId(ship.id) === preferredShipId) ?? candidates[0];
+    return candidates.find((ship) => this.normalizeShipId(ship.id) === preferredShipId);
   }
 
   seedAsteroidsForInProgressMission(): void {
+    const generation = ++this.fieldRequestGeneration;
+    this.unsubscribeCelestialBodyListResponse?.();
+    this.unsubscribeLocalCelestialBodyListResponse?.();
+    this.pendingLocalSweepSignature = null;
     const playerName = this.deps.getPlayerName().trim();
     const characterId = this.deps.getCharacterId()?.trim() ?? '';
     const sessionKey = this.deps.sessionService.getSessionKey()?.trim() ?? '';
+    const shipId = this.deps.getPreferredShipId()?.trim() ?? '';
+    const isCurrent = () =>
+      generation === this.fieldRequestGeneration &&
+      this.deps.getPlayerName().trim() === playerName &&
+      (this.deps.getCharacterId()?.trim() ?? '') === characterId &&
+      (this.deps.getPreferredShipId()?.trim() ?? '') === shipId &&
+      (this.deps.sessionService.getSessionKey()?.trim() ?? '') === sessionKey;
 
     if (!playerName || !characterId || !sessionKey) {
-      this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
-      appLogger.info('ColdBootScan (in-progress) requested fallback asteroid seeding.');
+      this.deps.emitLocalCelestialBodies({ status: 'unavailable', bodies: [], center: null, detectionRangeKm: 40 });
+      appLogger.warn('ColdBootScan cannot load the field without session and character identity.');
       return;
     }
 
@@ -218,6 +247,7 @@ export class ShipExteriorBootstrapController {
     this.unsubscribeShipListResponse = this.deps.socketService.listShipsByOwner(
       shipRequest,
       (shipResponse: ShipListByOwnerResponse) => {
+        if (!isCurrent()) return;
         if (shipResponse.success) {
           this.deps.updateTargetingCapabilityFromShipList(shipResponse.ships);
         }
@@ -226,8 +256,8 @@ export class ShipExteriorBootstrapController {
         const center = preferredShip?.spatial?.positionKm;
 
         if (!center) {
-          this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
-          appLogger.warn('ColdBootScan (in-progress) ship missing location; requested fallback asteroid seeding.');
+          this.deps.emitLocalCelestialBodies({ status: 'unavailable', bodies: [], center: null, detectionRangeKm: 40 });
+          appLogger.warn('ColdBootScan cannot load the field without a ship position.');
           return;
         }
 
@@ -246,31 +276,53 @@ export class ShipExteriorBootstrapController {
           cbRequest,
           'ship-exterior.cold-boot-resume',
           (outcome) => {
+            if (!isCurrent()) return;
             this.unsubscribeCelestialBodyListResponse = undefined;
             // Seeding against a partial body list would duplicate asteroids that live on unread pages.
             if (outcome.status !== 'complete') {
-              appLogger.warn('ColdBootScan (in-progress) skipped asteroid seeding: existing body list is incomplete.', {
+              appLogger.warn('ColdBootScan field load was incomplete.', {
                 status: outcome.status,
                 reason: outcome.reason,
                 loaded: outcome.items.length,
               });
+              this.deps.emitLocalCelestialBodies({ status: 'unavailable', bodies: [], center, detectionRangeKm: 40 });
               return;
             }
-            this.deps.emitColdBootAsteroidSeedIntent({
-              kind: 'resume',
-              actor: {
-                playerName,
-                characterId,
-                sessionKey,
+            const detectionRangeKm = this.deps.getDetectionRangeKm();
+            this.unsubscribeCelestialBodyListResponse = this.fetchAllCelestialBodies(
+              { playerName, sessionKey, solarSystemId: DEFAULT_SOLAR_SYSTEM_ID, positionKm: center,
+                distanceKm: detectionRangeKm, states: ['unscanned', 'active'] },
+              'ship-exterior.shared-sweep',
+              (sharedOutcome) => {
+                if (!isCurrent()) return;
+                this.unsubscribeCelestialBodyListResponse = undefined;
+                if (sharedOutcome.status !== 'complete') {
+                  appLogger.warn('ShipExterior shared bodies sweep was incomplete.', sharedOutcome.reason);
+                  this.deps.emitLocalCelestialBodies({ status: 'unavailable', bodies: [], center, detectionRangeKm });
+                  return;
+                }
+                const bodiesById = new Map(
+                  [...sharedOutcome.items, ...outcome.items]
+                    .filter((body) => body.state !== 'destroyed')
+                    .map((body) => [body.id, body]),
+                );
+                const bodies = [...bodiesById.values()];
+                if (bodies.some((body) => {
+                  const position = body.spatial?.positionKm;
+                  return !position || ![position.x, position.y, position.z].every(Number.isFinite);
+                })) {
+                  appLogger.warn('ShipExterior body response has invalid spatial position.');
+                  this.deps.emitLocalCelestialBodies({ status: 'unavailable', bodies: [], center, detectionRangeKm });
+                  return;
+                }
+                this.deps.emitLocalCelestialBodies({
+                  status: bodies.length ? 'loaded' : 'empty',
+                  bodies,
+                  center,
+                  detectionRangeKm,
+                });
               },
-              context: {
-                playerName,
-                characterId,
-                center,
-                launchSeedHint: this.deps.getLaunchSeedHint(),
-                existingBodies: outcome.items,
-              },
-            });
+            );
           },
         );
       },
@@ -339,6 +391,7 @@ export class ShipExteriorBootstrapController {
   }
 
   dispose(): void {
+    this.fieldRequestGeneration += 1;
     this.unsubscribeShipListResponse?.();
     this.unsubscribeCelestialBodyListResponse?.();
     this.unsubscribeLocalCelestialBodyListResponse?.();

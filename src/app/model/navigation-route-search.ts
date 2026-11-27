@@ -281,4 +281,20 @@ export interface NavigationRouteBatchFailureResponse extends NavigationRouteResp
   };
 }
 
-export type NavigationRouteBatchResponse = NavigationRouteBatchSuccessResponse | NavigationRouteBatchFailureResponse;
+export interface NavigationRouteBatchUnavailableResponse {
+  success: false;
+  message: 'Game unavailable';
+  availability: 'unavailable';
+  reason: 'startup_not_verified';
+  correlationId?: string;
+  requestIdentity?: {
+    operation: 'navigation-route-edge-batch';
+    entityType: 'solar-system';
+    containerId: 'sol';
+  };
+}
+
+export type NavigationRouteBatchResponse =
+  | NavigationRouteBatchSuccessResponse
+  | NavigationRouteBatchFailureResponse
+  | NavigationRouteBatchUnavailableResponse;

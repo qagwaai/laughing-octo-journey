@@ -361,7 +361,7 @@ describe('ShipExteriorSocketService', () => {
     expect(socketService.listenerCount(CELESTIAL_BODY_LIST_RESPONSE_EVENT)).toBe(0);
   });
 
-  it('skips contract-invalid celestial bodies but still resolves the page', () => {
+  it('fails the page when a celestial body violates the contract', () => {
     let received: CelestialBodyListResponse | undefined;
     service.listCelestialBodies(
       { sessionKey: 'session-1', playerName: 'Pioneer', solarSystemId: 'sol', offset: 0, limit: 500 },
@@ -377,6 +377,7 @@ describe('ShipExteriorSocketService', () => {
       success: true,
       correlationId: requestPayload.correlationId,
       requestIdentity: requestPayload.requestIdentity,
+      playerName: 'Pioneer',
       solarSystemId: 'sol',
       total: 1,
       offset: 0,
@@ -385,7 +386,7 @@ describe('ShipExteriorSocketService', () => {
       celestialBodies: [{ id: 'broken', bodyType: 'planet', surfaceArchetype: 'not-a-type', state: 'active' }],
     });
 
-    expect(received).toEqual(expect.objectContaining({ success: true, total: 1, hasMore: false, celestialBodies: [] }));
+    expect(received).toEqual(expect.objectContaining({ success: false, celestialBodies: [] }));
   });
 
   it('should emit item-list-by-location and resolve only matching responses', () => {

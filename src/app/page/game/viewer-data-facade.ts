@@ -1,11 +1,8 @@
 import { recoverCanonicalBodyCollection } from '../../model/celestial-classification';
-import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { coerceExternalObjectDescriptor, type ExternalObjectDomain } from '../../model/external-object-descriptor';
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
-import { isValidShipSpatial } from '../../model/math/spatial';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
-import type { ShipUpsertRequest, ShipUpsertResponse } from '../../model/ship-upsert';
 import { mergeUniqueViewerBodies, type SolarSystemGetResponse, type ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { validateSw13M4DescriptorEnvelope } from '../../scene/viewer/viewer-performance-guardrails';
@@ -60,7 +57,6 @@ const VIEWER_MARKET_DISCOVERY_LIMIT = 250;
 
 export class ViewerDataFacade {
   private lastLoadedSystemId: string | null = null;
-  private repairedShipIds = new Set<string>();
   private disposed = false;
 
   constructor(private readonly deps: ViewerDataFacadeDeps) {}
@@ -257,48 +253,7 @@ export class ViewerDataFacade {
       const allShips = response.ships ?? [];
       const systemShips = allShips.filter((ship) => !ship.spatial || ship.spatial.solarSystemId === solarSystemId);
       this.deps.setShips(systemShips);
-      this.maybeRepairInvalidShipSpatial(playerName, sessionKey, solarSystemId, allShips);
     });
   }
 
-  private maybeRepairInvalidShipSpatial(
-    playerName: string,
-    sessionKey: string,
-    solarSystemId: string,
-    ships: ShipSummary[],
-  ): void {
-    const characterId = this.deps.getActiveCharacterId();
-    if (!characterId) {
-      return;
-    }
-
-    for (const ship of ships) {
-      if (!ship?.id || isValidShipSpatial(ship.spatial)) {
-        continue;
-      }
-      if (this.repairedShipIds.has(ship.id)) {
-        continue;
-      }
-      this.repairedShipIds.add(ship.id);
-      const update = generateDeterministicStarterShipUpdate(playerName, characterId, ship.id);
-      const upsertRequest: ShipUpsertRequest = {
-        playerName,
-        characterId,
-        sessionKey,
-        ship: update,
-      };
-      appLogger.warn(`Repairing ship ${ship.id} with invalid spatial; re-running deterministic asteroid-belt upsert.`);
-      this.deps.socketService.upsertShip(upsertRequest, (upsertResponse: ShipUpsertResponse) => {
-        if (!upsertResponse.success) {
-          appLogger.warn(`Ship spatial repair failed for ${ship.id}:`, upsertResponse.message);
-          return;
-        }
-        if (this.deps.getCurrentSolarSystemId() !== solarSystemId) {
-          return;
-        }
-
-        this.loadShipsForSystem(playerName, sessionKey, solarSystemId);
-      });
-    }
-  }
 }

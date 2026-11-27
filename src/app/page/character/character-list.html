@@ -11,10 +11,10 @@
     </p>
     }
 
-    <button class="load-btn" (click)="loadCharacters()" [disabled]="isLoading()">
+    <button class="load-btn" (click)="loadCharacters()" [disabled]="isLoading() || isJoining()">
       {{ isLoading() ? t.character.list.loadingLabel : t.character.list.loadLabel }}
     </button>
-    <button class="setup-btn" (click)="navigateToCharacterSetup()">{{ t.character.list.setupLabel }}</button>
+    <button class="setup-btn" (click)="navigateToCharacterSetup()" [disabled]="isJoining()">{{ t.character.list.setupLabel }}</button>
 
     @if (errorMessage()) {
     <div class="status-message error-message">{{ errorMessage() }}</div>
@@ -27,13 +27,13 @@
         <div class="character-row">
           <div class="character-name">{{ character.characterName }}</div>
           <div class="character-actions">
-            <button class="join-link" type="button" (click)="navigateToGameJoin(character)">
-              {{ getJoinGameLabel(character) }}
+            <button class="join-link" type="button" (click)="navigateToGameJoin(character)" [disabled]="isJoining()">
+              {{ isJoining() ? t.character.list.joiningLabel : getJoinGameLabel(character) }}
             </button>
-            <button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)">
+            <button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)" [disabled]="isJoining()">
               {{ t.character.list.editLabel }}
             </button>
-            <button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">
+            <button class="delete-link" type="button" (click)="requestDeleteCharacter(character)" [disabled]="isJoining()">
               {{ t.character.list.deleteLabel }}
             </button>
             <app-character-bust-thumbnail

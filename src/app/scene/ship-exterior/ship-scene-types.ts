@@ -28,6 +28,7 @@ export interface ShipSceneFlightState {
 export interface ShipSceneAsteroidSample {
   id: string;
   serverCelestialBodyId?: string | null;
+  serverCelestialBody?: import('../../model/celestial-body-list').CelestialBodyListItem;
   meshProfileKey?: string | null;
   estimatedDiameterM?: number | null;
   scanned: boolean;

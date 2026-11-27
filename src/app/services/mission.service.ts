@@ -24,7 +24,7 @@ import {
 import type { ShipDamagePreset } from '../model/ship-damage';
 import { appLogger } from './logger';
 import { resolveMissionInitializationStrategy } from './mission-navigation/mission-initialization-strategy';
-import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
+import { createCorrelationId, createUuidCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketLifecycleService } from './socket-lifecycle.service';
 import { SocketService } from './socket.service';
 
@@ -98,22 +98,15 @@ function buildDefaultMissionUpsertRequestIdentity(request: MissionUpsertRequest)
   return {
     operation: 'mission-upsert',
     entityType: 'mission',
-    containerId: normalizeIdentityValue(request.characterId) || 'unknown-character',
+    containerId: request.characterId,
   };
-}
-
-function matchesMissionUpsertRequestIdentity(
-  left: MissionUpsertRequestIdentity | undefined,
-  right: MissionUpsertRequestIdentity | undefined,
-): boolean {
-  return matchesBasicRequestIdentity(left, right);
 }
 
 function isMissionUpsertResponseForRequest(
   response: MissionUpsertResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: MissionUpsertRequestIdentity,
-  _expectedRequest: MissionUpsertRequest,
+  expectedRequest: MissionUpsertRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
   if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
@@ -124,7 +117,11 @@ function isMissionUpsertResponseForRequest(
     return false;
   }
 
-  return matchesMissionUpsertRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+  return response.playerName === expectedRequest.playerName &&
+    response.characterId === expectedRequest.characterId &&
+    response.requestIdentity.operation === expectedRequestIdentity.operation &&
+    response.requestIdentity.entityType === expectedRequestIdentity.entityType &&
+    response.requestIdentity.containerId === expectedRequestIdentity.containerId;
 }
 
 /**
@@ -376,7 +373,7 @@ export class MissionService {
         sessionKey,
         status,
         ...(typeof request.statusDetail === 'string' ? { statusDetail: request.statusDetail } : {}),
-        correlationId: createCorrelationId('mission-upsert'),
+        correlationId: createUuidCorrelationId(),
         correlationSource: 'mission-service.upsertMissionStatus',
       };
       const upsertRequestIdentity = buildDefaultMissionUpsertRequestIdentity(upsertRequest);

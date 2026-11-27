@@ -25,11 +25,14 @@ import {
   CHARACTER_LIST_RESPONSE_EVENT,
   type CharacterListRequest,
   type CharacterListRequestIdentity,
-  type CharacterListResponse,
+  type CharacterListResult,
 } from '../model/character-list';
 import { appLogger } from './logger';
-import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
+import { createCorrelationId, createUuidCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
+import { AUTH_SELECTION_TIMEOUT_MS, responseRecord, validCharacterListResponse } from './auth-selection-response';
+import { locale } from '../i18n/locale';
 import { SocketService } from './socket.service';
+import { SessionService } from './session.service';
 
 function matchesRequestIdentity(
   left:
@@ -65,44 +68,6 @@ function emitSocketCorrelationWarning(operation: string, detail: Record<string, 
       }),
     );
   }
-}
-
-function buildDefaultCharacterAddRequestIdentity(request: CharacterAddRequest): CharacterAddRequestIdentity {
-  return {
-    operation: 'character-add',
-    entityType: 'character',
-    containerId: `player-${normalizeIdentityValue(request.playerName) || 'unknown-player'}`,
-  };
-}
-
-function isCharacterAddResponseForRequest(
-  response: CharacterAddResponse,
-  expectedCorrelationId: string,
-  expectedRequestIdentity: CharacterAddRequestIdentity,
-  expectedRequest: CharacterAddRequest,
-): boolean {
-  const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
-  }
-
-  if (normalizeIdentityValue(response.playerName) !== normalizeIdentityValue(expectedRequest.playerName)) {
-    return false;
-  }
-
-  const responseCharacterName = normalizeIdentityValue(response.characterName);
-  const expectedCharacterName = normalizeIdentityValue(expectedRequest.characterName);
-  if (responseCharacterName && expectedCharacterName && responseCharacterName !== expectedCharacterName) {
-    return false;
-  }
-
-  return true;
 }
 
 function buildDefaultCharacterEditRequestIdentity(request: CharacterEditRequest): CharacterEditRequestIdentity {
@@ -155,26 +120,6 @@ function buildDefaultCharacterListRequestIdentity(request: CharacterListRequest)
   };
 }
 
-function isCharacterListResponseForRequest(
-  response: CharacterListResponse,
-  expectedCorrelationId: string,
-  expectedRequestIdentity: CharacterListRequestIdentity,
-  expectedRequest: CharacterListRequest,
-): boolean {
-  const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
-  }
-
-  return normalizeIdentityValue(response.playerName) === normalizeIdentityValue(expectedRequest.playerName);
-}
-
 function buildDefaultCharacterDeleteRequestIdentity(request: CharacterDeleteRequest): CharacterDeleteRequestIdentity {
   return {
     operation: 'character-delete',
@@ -219,52 +164,82 @@ function isCharacterDeleteResponseForRequest(
  */
 export class CharacterService {
   private socketService = inject(SocketService);
+  private sessionService = inject(SessionService);
 
   /**
    * Creates a character and invokes the callback when the matching response arrives.
    */
   addCharacter(request: CharacterAddRequest, onResponse: (response: CharacterAddResponse) => void): () => void {
-    const expectedCorrelationId = request.correlationId?.trim() || createCorrelationId('character-add');
-    const expectedRequestIdentity = request.requestIdentity ?? buildDefaultCharacterAddRequestIdentity(request);
+    const expectedCorrelationId = createUuidCorrelationId();
+    const playerId = this.sessionService.getPlayerId()?.trim();
+    if (!playerId) {
+      appLogger.warn('[character-add] Cannot create a character without the authenticated player ID');
+      throw new Error('Cannot create a character without the authenticated player ID.');
+    }
+    const expectedRequestIdentity = {
+      operation: 'character-add',
+      entityType: 'character',
+      containerId: playerId,
+    };
     const requestWithCorrelation: CharacterAddRequest = {
-      ...request,
+      playerName: request.playerName,
+      characterName: request.characterName,
+      sessionKey: request.sessionKey,
       correlationId: expectedCorrelationId,
-      correlationSource: request.correlationSource ?? 'character-service.addCharacter',
       requestIdentity: expectedRequestIdentity,
     };
 
     let handled = false;
-    const unsubscribe = this.socketService.on(CHARACTER_ADD_RESPONSE_EVENT, (response: CharacterAddResponse) => {
-      if (handled) {
-        return;
-      }
-
-      if (
-        !isCharacterAddResponseForRequest(
-          response,
-          expectedCorrelationId,
-          expectedRequestIdentity,
-          requestWithCorrelation,
-        )
-      ) {
-        emitSocketCorrelationWarning('character-add', {
-          responseCorrelationId: response.correlationId ?? null,
-          expectedCorrelationId,
-          responsePlayerName: response.playerName,
-          expectedPlayerName: requestWithCorrelation.playerName,
-          responseCharacterName: response.characterName ?? null,
-          expectedCharacterName: requestWithCorrelation.characterName,
-        });
-        return;
-      }
-
+    let timer: ReturnType<typeof setTimeout>;
+    const cleanup = () => {
       handled = true;
+      clearTimeout(timer);
       unsubscribe();
-      onResponse(response);
+    };
+    const unknownOutcome = (clientError: 'timeout' | 'invalid_response') => {
+      appLogger.warn('[character-add] Creation outcome is unknown; check the character list', { clientError });
+      onResponse({
+        success: false,
+        message: locale.character.setup.messages.creationOutcomeUnknown,
+        playerName: request.playerName,
+        correlationId: expectedCorrelationId,
+        requestIdentity: expectedRequestIdentity,
+        clientError,
+      });
+    };
+    const unsubscribe = this.socketService.on(CHARACTER_ADD_RESPONSE_EVENT, (response: unknown) => {
+      if (handled || !responseRecord(response) || response['correlationId'] !== expectedCorrelationId) return;
+      const identity = response['requestIdentity'];
+      if (!responseRecord(identity) || identity['operation'] !== expectedRequestIdentity.operation ||
+          identity['entityType'] !== expectedRequestIdentity.entityType ||
+          identity['containerId'] !== expectedRequestIdentity.containerId ||
+          response['playerName'] !== request.playerName) return;
+      cleanup();
+      const validSuccess = response['success'] === true && typeof response['characterId'] === 'string' &&
+        !!response['characterId'].trim() && response['characterName'] === request.characterName;
+      const validFailure = response['success'] === false && !('characterId' in response) &&
+        !('characterName' in response);
+      if (typeof response['message'] !== 'string' || (!validSuccess && !validFailure)) {
+        unknownOutcome('invalid_response');
+        return;
+      }
+      const characterId = response['characterId'];
+      onResponse({
+        success: validSuccess,
+        message: response['message'],
+        playerName: request.playerName,
+        correlationId: expectedCorrelationId,
+        requestIdentity: expectedRequestIdentity,
+        ...(validSuccess && typeof characterId === 'string' ? { characterName: request.characterName, characterId } : {}),
+      });
     });
-
+    timer = setTimeout(() => {
+      if (handled) return;
+      cleanup();
+      unknownOutcome('timeout');
+    }, AUTH_SELECTION_TIMEOUT_MS);
     this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, requestWithCorrelation);
-    return unsubscribe;
+    return cleanup;
   }
 
   /**
@@ -317,46 +292,47 @@ export class CharacterService {
   /**
    * Requests character list data for the active player context.
    */
-  listCharacters(request: CharacterListRequest, onResponse: (response: CharacterListResponse) => void): () => void {
-    const expectedCorrelationId = request.correlationId?.trim() || createCorrelationId('character-list');
+  listCharacters(request: CharacterListRequest, onResponse: (response: CharacterListResult) => void): () => void {
+    const expectedCorrelationId = createUuidCorrelationId();
     const expectedRequestIdentity = request.requestIdentity ?? buildDefaultCharacterListRequestIdentity(request);
     const requestWithCorrelation: CharacterListRequest = {
-      ...request,
+      playerName: request.playerName,
+      sessionKey: request.sessionKey,
       correlationId: expectedCorrelationId,
-      correlationSource: request.correlationSource ?? 'character-service.listCharacters',
       requestIdentity: expectedRequestIdentity,
     };
 
     let handled = false;
-    const unsubscribe = this.socketService.on(CHARACTER_LIST_RESPONSE_EVENT, (response: CharacterListResponse) => {
-      if (handled) {
-        return;
-      }
-
-      if (
-        !isCharacterListResponseForRequest(
-          response,
-          expectedCorrelationId,
-          expectedRequestIdentity,
-          requestWithCorrelation,
-        )
-      ) {
-        emitSocketCorrelationWarning('character-list', {
-          responseCorrelationId: response.correlationId ?? null,
-          expectedCorrelationId,
-          responsePlayerName: response.playerName,
-          expectedPlayerName: requestWithCorrelation.playerName,
-        });
-        return;
-      }
-
+    let timer: ReturnType<typeof setTimeout>;
+    const cleanup = () => {
       handled = true;
+      clearTimeout(timer);
       unsubscribe();
-      onResponse(response);
+    };
+    const unsubscribe = this.socketService.on(CHARACTER_LIST_RESPONSE_EVENT, (response: unknown) => {
+      if (handled || !responseRecord(response) || response['correlationId'] !== expectedCorrelationId) return;
+      const identity = response['requestIdentity'];
+      if (!responseRecord(identity) ||
+          ['operation', 'entityType', 'containerId'].some(
+            (key) => identity[key] !== expectedRequestIdentity[key as keyof CharacterListRequestIdentity],
+          )) return;
+      cleanup();
+      if (validCharacterListResponse(response) &&
+          normalizeIdentityValue(response['playerName']) === normalizeIdentityValue(request.playerName)) {
+        onResponse(response);
+      } else {
+        appLogger.warn('[character-list] Invalid matched selection response');
+        onResponse({ success: false, message: locale.character.list.errors.invalidResponse, clientError: 'invalid_response' });
+      }
     });
-
+    timer = setTimeout(() => {
+      if (handled) return;
+      cleanup();
+      appLogger.warn('[character-list] Selection response timed out');
+      onResponse({ success: false, message: locale.character.list.errors.responseTimeout, clientError: 'timeout' });
+    }, AUTH_SELECTION_TIMEOUT_MS);
     this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, requestWithCorrelation);
-    return unsubscribe;
+    return cleanup;
   }
 
   /**

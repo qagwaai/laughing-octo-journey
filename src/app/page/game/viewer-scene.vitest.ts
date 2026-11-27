@@ -708,13 +708,11 @@ describe('ViewerScenePage', () => {
     expect(component['zoomLevel']()).toBe(100);
   });
 
-  it('lazy-repairs ships with invalid spatial by re-issuing the deterministic upsert', () => {
+  it('does not overwrite ships with invalid spatial and reports unknown position', () => {
     const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
     const sessionService = TestBed.inject(SessionService) as unknown as MockSessionService;
     sessionService.setActiveCharacter({ id: 'char-1', characterName: 'Nova', level: 5 });
 
-    // Hand the SocketService mock an `upsertShip` spy so the production code's
-    // `socketService.upsertShip(...)` call is observable in this test.
     (socketService as unknown as { upsertShip: ReturnType<typeof vi.fn> }).upsertShip = vi.fn();
 
     const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)
@@ -763,16 +761,7 @@ describe('ViewerScenePage', () => {
     fixture.detectChanges();
 
     const upsertShipSpy = (socketService as unknown as { upsertShip: ReturnType<typeof vi.fn> }).upsertShip;
-    expect(upsertShipSpy).toHaveBeenCalledTimes(1);
-    const [request] = upsertShipSpy.mock.calls.slice(-1)[0] as [
-      { playerName: string; characterId: string; ship: { id: string; spatial: { positionKm: { x: number } } } },
-    ];
-    expect(request.playerName).toBe('Pioneer');
-    expect(request.characterId).toBe('char-1');
-    expect(request.ship.id).toBe('ship-broken');
-    // Deterministic asteroid-belt placement: magnitude well above the sun-origin floor.
-    const { x, y, z } = request.ship.spatial.positionKm as { x: number; y: number; z: number };
-    expect(Math.hypot(x, y, z)).toBeGreaterThan(1e7);
+    expect(upsertShipSpy).not.toHaveBeenCalled();
     // Ship is still surfaced to the viewer so the unknown-spatial fallback can render it.
     expect(component['ships']().some((s) => s.id === 'ship-broken')).toBe(true);
     expect(component['hasUnknownSpatialShip']()).toBe(true);

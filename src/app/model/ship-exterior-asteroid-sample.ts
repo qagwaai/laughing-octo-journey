@@ -6,10 +6,12 @@ import type { AsteroidMaterialProfile } from './asteroid-materials';
 import type { CelestialBodyLocation } from './celestial-body-location';
 import type { ExternalObjectDescriptor } from './external-object-descriptor';
 import type { Triple } from './triple';
+import type { CelestialBodyListItem } from './celestial-body-list';
 
 export interface AsteroidScanSample {
   id: string;
   serverCelestialBodyId: string | null;
+  serverCelestialBody?: CelestialBodyListItem;
   meshProfileKey?: string | null;
   estimatedDiameterM?: number | null;
   sw13bSeedId?: string | null;

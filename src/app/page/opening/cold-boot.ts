@@ -40,6 +40,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
   protected audioEnabled = signal(false);
   protected audioBedRunning = signal(false);
   protected scanActionPending = signal(false);
+  protected scanOutcomeUnknown = signal(false);
   protected scanActionError = signal('');
 
   protected content = signal(
@@ -131,7 +132,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
    * Starts scanning flow by updating mission state and navigating to scan view.
    */
   protected async startScanning(): Promise<void> {
-    if (this.scanActionPending()) {
+    if (this.scanActionPending() || this.scanOutcomeUnknown()) {
       return;
     }
 
@@ -148,7 +149,12 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
     const result = await this.missionService.upsertMissionStatus(missionRequest);
     if (result !== 'updated') {
       this.scanActionPending.set(false);
-      this.scanActionError.set(this.t.opening.coldBoot.startScanningErrorLabel);
+      if (result === 'timeout' || result === 'update-failed') {
+        this.scanOutcomeUnknown.set(true);
+        this.scanActionError.set(this.t.opening.coldBoot.startScanningOutcomeUnknown);
+      } else {
+        this.scanActionError.set(this.t.opening.coldBoot.startScanningErrorLabel);
+      }
       return;
     }
 

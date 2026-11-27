@@ -20,7 +20,7 @@ import {
   type CharacterListRequest,
   type CharacterListResponse,
 } from '../../model/character-list';
-import { GAME_JOIN_REQUEST_EVENT } from '../../model/game-join';
+import { GAME_JOIN_REQUEST_EVENT, GAME_JOIN_RESPONSE_EVENT } from '../../model/game-join';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { GENERIC_EXPLORATION_MISSION_ID } from '../../mission/generic-exploration-ship-exterior-mission';
 import { INVALID_SESSION_EVENT } from '../../model/session';
@@ -38,6 +38,24 @@ const TEST_REQUEST_IDENTITY = {
   entityType: 'test-entity',
   containerId: 'test-container',
 };
+
+function replyToGameJoin(socket: MockSocketService, success = true): void {
+  const request = [...socket.emittedEvents].reverse().find((event) => event.event === GAME_JOIN_REQUEST_EVENT)?.data as {
+    playerName: string;
+    characterId: string;
+    correlationId: string;
+    requestIdentity: { operation: string; entityType: string; containerId: string };
+  };
+  socket.triggerEvent(GAME_JOIN_RESPONSE_EVENT, {
+    playerName: request.playerName,
+    characterId: request.characterId,
+    correlationId: request.correlationId,
+    requestIdentity: request.requestIdentity,
+    success,
+    message: success ? 'Joined' : 'Game unavailable',
+    ...(!success ? { availability: 'unavailable', reason: 'startup_not_verified' } : {}),
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -221,8 +239,8 @@ describe('CharacterListPage', () => {
         requestIdentity: listRequest.requestIdentity!,
         playerName: 'Pioneer',
         characters: [
-          { id: '1', characterName: 'Nova', level: 5 },
-          { id: '2', characterName: 'Atlas', level: 8 },
+          { id: '1', characterName: 'Nova', level: 5, credits: 0, creditLedger: [], missions: [] },
+          { id: '2', characterName: 'Atlas', level: 8, credits: 0, creditLedger: [], missions: [] },
         ],
       } satisfies CharacterListResponse);
 
@@ -231,49 +249,55 @@ describe('CharacterListPage', () => {
       expect(component['isLoading']()).toBe(false);
     });
 
-    it('should map alternate backend name fields to characterName', () => {
+    it('should reject alternate backend name fields instead of manufacturing identity', () => {
       socketService.connected = true;
       const { component } = setup({ socketService, sessionService });
+      const request = socketService.emittedEvents.at(-1)?.data as CharacterListRequest;
 
       socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: request.correlationId,
+        requestIdentity: request.requestIdentity,
         playerName: 'Pioneer',
         characters: [
           { id: '1', name: 'Nova' },
           { characterId: '2', character: { name: 'Atlas' } },
         ],
-      } as any);
+      });
 
-      expect(component['characters']()).toEqual([
-        { id: '1', characterName: 'Nova', level: undefined, createdAt: undefined },
-        { id: '2', characterName: 'Atlas', level: undefined, createdAt: undefined },
-      ]);
+      expect(component['characters']()).toEqual([]);
+      expect(component['errorMessage']()).toBe('The server returned invalid character selection data.');
     });
 
     it('should preserve mission progress from the character list response', () => {
       socketService.connected = true;
       const { component } = setup({ socketService, sessionService });
+      const request = socketService.emittedEvents.at(-1)?.data as CharacterListRequest;
 
       socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: request.correlationId,
+        requestIdentity: request.requestIdentity,
         playerName: 'Pioneer',
         characters: [
           {
             id: '1',
             characterName: 'Nova',
+            credits: 0,
+            creditLedger: [],
             missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
           },
         ],
-      } as any);
+      });
 
       expect(component['characters']()).toEqual([
         {
           id: '1',
           characterName: 'Nova',
-          level: undefined,
-          createdAt: undefined,
+          credits: 0,
+          creditLedger: [],
           missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
         },
       ]);
@@ -292,9 +316,10 @@ describe('CharacterListPage', () => {
         message: 'Player not found.',
         correlationId: listRequest.correlationId,
         requestIdentity: listRequest.requestIdentity!,
+        reason: 'player_not_registered',
         playerName: 'Pioneer',
         characters: [],
-      } satisfies CharacterListResponse);
+      });
 
       expect(component['characters']()).toEqual([]);
       expect(component['errorMessage']()).toBe('Player not found.');
@@ -384,10 +409,13 @@ describe('CharacterListPage', () => {
       };
       component.navigateToGameJoin(character);
 
+      expect(router.navigate).not.toHaveBeenCalled();
+      expect(component['isJoining']()).toBe(true);
       expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
         event: GAME_JOIN_REQUEST_EVENT,
-        data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
+        data: expect.objectContaining({ playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' }),
       });
+      replyToGameJoin(socketService);
       expect(router.navigate).toHaveBeenCalledWith(
         [{ outlets: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] } }],
         {
@@ -395,6 +423,59 @@ describe('CharacterListPage', () => {
           state: { playerName: 'Pioneer', joinCharacter: character },
         },
       );
+    });
+
+    it('keeps gameplay closed on rejected join and suppresses duplicate submits', () => {
+      const component = TestBed.createComponent(CharacterListPage).componentInstance;
+      const character = {
+        id: '1',
+        characterName: 'Nova',
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' as const }],
+      };
+      component.navigateToGameJoin(character);
+      component.navigateToGameJoin(character);
+      expect(socketService.emittedEvents.filter((event) => event.event === GAME_JOIN_REQUEST_EVENT)).toHaveLength(1);
+      replyToGameJoin(socketService, false);
+      expect(component['isJoining']()).toBe(false);
+      expect(component['errorMessage']()).toBe('Game unavailable');
+      expect(router.navigate).not.toHaveBeenCalled();
+      expect(shipServiceStub.listShipsByOwner).not.toHaveBeenCalled();
+    });
+
+    it('allows an explicit retry after a rejected join', () => {
+      const fixture = TestBed.createComponent(CharacterListPage);
+      const component = fixture.componentInstance;
+      const character = { id: '1', characterName: 'Nova', missions: [] };
+      component['characters'].set([character]);
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('.join-link') as HTMLButtonElement;
+      button.click();
+      replyToGameJoin(socketService, false);
+      fixture.detectChanges();
+      expect(button.disabled).toBe(false);
+      expect(component['errorMessage']()).toBe('Game unavailable');
+      expect(socketService.emittedEvents.filter((event) => event.event === GAME_JOIN_REQUEST_EVENT)).toHaveLength(1);
+
+      button.click();
+      expect(socketService.emittedEvents.filter((event) => event.event === GAME_JOIN_REQUEST_EVENT)).toHaveLength(2);
+      expect(component['errorMessage']()).toBeNull();
+      expect(component['isJoining']()).toBe(true);
+      expect(router.navigate).not.toHaveBeenCalled();
+    });
+
+    it('does not open a resumed mission when no authoritative ship can be hydrated', async () => {
+      const component = TestBed.createComponent(CharacterListPage).componentInstance;
+      component.navigateToGameJoin({
+        id: '1',
+        characterName: 'Nova',
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
+      });
+      replyToGameJoin(socketService);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(router.navigate).not.toHaveBeenCalled();
+      expect(component['errorMessage']()).toBe('The active ship could not be loaded. Gameplay has not been opened.');
     });
 
     it('should show the in-progress join label when first-target is ACTIVE', () => {
@@ -495,6 +576,8 @@ describe('CharacterListPage', () => {
         missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' as const }],
       };
       component.navigateToGameJoin(character);
+      expect(shipServiceStub.listShipsByOwner).not.toHaveBeenCalled();
+      replyToGameJoin(socketService);
       await Promise.resolve();
       await Promise.resolve();
 
@@ -504,7 +587,7 @@ describe('CharacterListPage', () => {
 
       expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
         event: GAME_JOIN_REQUEST_EVENT,
-        data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
+        data: expect.objectContaining({ playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' }),
       });
       expect(router.navigate).toHaveBeenCalledWith(
         [{ outlets: { primary: ['ship-exterior-view'], right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
@@ -572,6 +655,7 @@ describe('CharacterListPage', () => {
         missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' as const }],
       };
       component.navigateToGameJoin(character);
+      replyToGameJoin(socketService);
 
       await Promise.resolve();
       await Promise.resolve();
@@ -580,7 +664,7 @@ describe('CharacterListPage', () => {
 
       expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
         event: GAME_JOIN_REQUEST_EVENT,
-        data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
+        data: expect.objectContaining({ playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' }),
       });
       expect(router.navigate).toHaveBeenCalledWith(
         [{ outlets: { primary: ['ship-exterior-view'], right: ['mission-board'], left: ['game-main'] } }],
@@ -775,8 +859,8 @@ describe('CharacterListPage', () => {
       });
     });
 
-    it('should clear session and navigate to login on invalid-session event after successful load', () => {
-      TestBed.createComponent(CharacterListPage);
+    it('should verify an unattributed notice before clearing the current session', () => {
+      const component = TestBed.createComponent(CharacterListPage).componentInstance;
 
       expect(sessionService.hasSession()).toBe(true);
 
@@ -794,8 +878,24 @@ describe('CharacterListPage', () => {
         characters: [],
       } satisfies CharacterListResponse);
 
+      component.navigateToGameJoin({ id: '1', characterName: 'Nova', missions: [] });
+      expect(component['isJoining']()).toBe(true);
       socketService.triggerEvent(INVALID_SESSION_EVENT, { message: 'Session expired.' });
+      expect(component['isJoining']()).toBe(false);
+      replyToGameJoin(socketService);
 
+      expect(sessionService.hasSession()).toBe(true);
+      expect(router.navigate).not.toHaveBeenCalled();
+      const verification = socketService.emittedEvents.at(-1)?.data as CharacterListRequest;
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: false,
+        message: 'Invalid session',
+        reason: 'invalid_session',
+        correlationId: verification.correlationId,
+        requestIdentity: verification.requestIdentity,
+        playerName: 'Pioneer',
+        characters: [],
+      });
       expect(sessionService.hasSession()).toBe(false);
       expect(router.navigate).toHaveBeenCalledWith([{ outlets: { left: ['login'] } }], { preserveFragment: true });
     });
@@ -850,141 +950,41 @@ describe('CharacterListPage', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // Null-coalesce / fallback branch coverage
-  // -------------------------------------------------------------------------
-
-  describe('normalizeCharacters() fallback branches', () => {
-    it('uses empty string characterName when all name fields are absent', () => {
+  describe('strict selection data', () => {
+    it.each([
+      null,
+      { level: 3 },
+      { id: 'c', characterName: 'Name', credits: 0, creditLedger: [] },
+      { id: 'c', characterName: 'Name', credits: 0, creditLedger: [], missions: [null] },
+    ])('rejects malformed character data without fabricating defaults: %j', (character) => {
       socketService.connected = true;
       const { component } = setup({ socketService, sessionService });
-
-      // Passes a character with no id, characterId, characterName, name, or character.name.
+      const request = socketService.emittedEvents.at(-1)?.data as CharacterListRequest;
       socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: request.correlationId,
+        requestIdentity: request.requestIdentity,
         playerName: 'Pioneer',
-        characters: [{ level: 3 }],
-      } as any);
-
-      const chars = component['characters']();
-      expect(chars[0].characterName).toBe('');
-      // id falls back to `char-0` when neither id nor characterId is present.
-      expect(chars[0].id).toBe('char-0');
+        characters: [character],
+      });
+      expect(component['characters']()).toEqual([]);
+      expect(component['errorMessage']()).toBe('The server returned invalid character selection data.');
+      expect(component['isLoading']()).toBe(false);
     });
 
-    it('uses null item as empty object (raw ?? {})', () => {
+    it('preserves authoritative empty missions', () => {
       socketService.connected = true;
       const { component } = setup({ socketService, sessionService });
-
+      const request = socketService.emittedEvents.at(-1)?.data as CharacterListRequest;
       socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-        characters: [null, { id: 'char-2', characterName: 'Vex' }],
-      } as any);
-
-      const chars = component['characters']();
-      // First entry is null, normalizes to '' name and 'char-0' id fallback.
-      expect(chars[0].characterName).toBe('');
-      expect(chars[1].characterName).toBe('Vex');
-    });
-
-    it('omits createdAt when it is not a string', () => {
-      socketService.connected = true;
-      const { component } = setup({ socketService, sessionService });
-
-      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-        characters: [{ id: 'c1', characterName: 'Aero', createdAt: 99999 }],
-      } as any);
-
-      expect(component['characters']()[0].createdAt).toBeUndefined();
-    });
-
-    it('normalizes missions with null entries via rawMission ?? {}', () => {
-      socketService.connected = true;
-      const { component } = setup({ socketService, sessionService });
-
-      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-        characters: [
-          {
-            id: 'c1',
-            characterName: 'Aero',
-            missions: [null, { missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
-          },
-        ],
-      } as any);
-
-      const missions = component['characters']()[0].missions ?? [];
-      // The null entry normalizes to an empty mission object; the second entry lands correctly.
-      expect(missions.some((m) => m.missionId === FIRST_TARGET_MISSION_ID)).toBe(true);
-    });
-
-    it('preserves createdAt when it is a string', () => {
-      socketService.connected = true;
-      const { component } = setup({ socketService, sessionService });
-
-      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-        characters: [{ id: 'c1', characterName: 'Aero', createdAt: '2026-01-01T00:00:00Z' }],
-      } as any);
-
-      expect(component['characters']()[0].createdAt).toBe('2026-01-01T00:00:00Z');
-    });
-
-    it('returns undefined missions when normalized missions list is empty', () => {
-      socketService.connected = true;
-      const { component } = setup({ socketService, sessionService });
-
-      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-        characters: [{ id: 'c1', characterName: 'Aero', missions: [] }],
-      } as any);
-
-      // Empty array normalizes to undefined rather than [].
-      expect(component['characters']()[0].missions).toBeUndefined();
-    });
-
-    it('returns null status when character has no first-target mission', () => {
-      socketService.connected = true;
-      const { component } = setup({ socketService, sessionService });
-
-      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-        characters: [{ id: 'c1', characterName: 'Aero' }],
-      } as any);
-
-      const char = component['characters']()[0];
-      const status = component['getFirstTargetStatus'](char);
-      expect(status).toBeNull();
-    });
-
-    it('uses joinLabel when character is not in-progress', () => {
-      socketService.connected = true;
-      const { component } = setup({ socketService, sessionService });
-
-      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-        characters: [{ id: 'c1', characterName: 'Aero' }],
-      } as any);
-
-      const char = component['characters']()[0];
-      const label = component['getJoinGameLabel'](char);
-      expect(typeof label).toBe('string');
+        success: true, message: 'ok', playerName: 'Pioneer',
+        correlationId: request.correlationId, requestIdentity: request.requestIdentity,
+        characters: [{ id: 'c', characterName: 'Name', credits: 0, creditLedger: [], missions: [] }],
+      });
+      const character = component['characters']()[0];
+      expect(character.missions).toEqual([]);
+      expect(component['getFirstTargetStatus'](character)).toBeNull();
     });
   });
 });

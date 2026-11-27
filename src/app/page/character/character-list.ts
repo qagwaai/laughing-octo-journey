@@ -5,9 +5,9 @@ import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import type { CharacterBustReadResponse } from '../../model/bust-descriptor';
 import { CharacterDeleteRequest, CharacterDeleteResponse } from '../../model/character-delete';
-import { CharacterListRequest, CharacterListResponse, PlayerCharacterSummary } from '../../model/character-list';
+import { CharacterListRequest, CharacterListResult, PlayerCharacterSummary } from '../../model/character-list';
 import { GameJoinRequest } from '../../model/game-join';
-import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
+import type { MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { GENERIC_EXPLORATION_MISSION_ID } from '../../mission/generic-exploration-ship-exterior-mission';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
@@ -47,11 +47,16 @@ export default class CharacterListPage implements OnDestroy {
   private missionNavigationService = inject(MissionNavigationService);
   private router = inject(Router);
   private unsubscribeInvalidSession?: () => void;
+  private unsubscribeList?: () => void;
+  private unsubscribeJoin?: () => void;
+  private destroyed = false;
+  private joinAttempt = 0;
   private navigationState: { playerName?: string } = resolveNavigationState<{ playerName?: string }>(this.router);
 
   protected playerName = signal<string>(this.resolveInitialPlayerName());
   protected characters = signal<PlayerCharacterSummary[]>([]);
   protected isLoading = signal(false);
+  protected isJoining = signal(false);
   protected errorMessage = signal<string | null>(null);
   protected pendingDeleteCharacter = signal<PlayerCharacterSummary | null>(null);
   protected isDeleting = signal(false);
@@ -84,6 +89,8 @@ export default class CharacterListPage implements OnDestroy {
    * server-side game-session teardown events during reconnect do not misfire.
    */
   loadCharacters(): void {
+    if (this.isJoining()) return;
+    this.unsubscribeList?.();
     const playerName = this.playerName().trim();
     if (!playerName) {
       this.errorMessage.set(this.t.character.list.errors.loadCharactersRequiresPlayer);
@@ -95,23 +102,31 @@ export default class CharacterListPage implements OnDestroy {
     this.errorMessage.set(null);
 
     const request: CharacterListRequest = { playerName, sessionKey: this.sessionService.getSessionKey()! };
-    this.characterService.listCharacters(request, (response: CharacterListResponse) => {
+    this.unsubscribeList = this.characterService.listCharacters(request, (response: CharacterListResult) => {
+      if (this.sessionService.getSessionKey() !== request.sessionKey) return;
       this.isLoading.set(false);
       if (response.success) {
-        const normalizedCharacters = this.normalizeCharacters(response.characters);
+        const normalizedCharacters = response.characters;
         this.characters.set(normalizedCharacters);
         // Bust thumbnails are fetched as a second pass so the character list itself
         // renders immediately, without waiting on per-character portrait lookups.
         this.loadCharacterBusts(normalizedCharacters);
         this.unsubscribeInvalidSession?.();
         this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
-          this.sessionService.clearSession();
-          this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+          this.joinAttempt++;
+          this.unsubscribeJoin?.();
+          this.isJoining.set(false);
+          this.characters.set([]);
+          this.loadCharacters();
         });
       } else {
         this.characters.set([]);
         this.bustThumbnails.set({});
         this.errorMessage.set(response.message);
+        if (response.reason === 'invalid_session') {
+          this.sessionService.clearSession();
+          this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+        }
       }
     });
   }
@@ -175,70 +190,6 @@ export default class CharacterListPage implements OnDestroy {
 
   protected getBustThumbnailState(characterId: string): CharacterBustThumbnailState {
     return this.bustThumbnails()[characterId] ?? { status: 'loading' };
-  }
-
-  /**
-   * Normalizes raw character payloads from backend variants into UI-safe summaries.
-   */
-  private normalizeCharacters(characters: unknown): PlayerCharacterSummary[] {
-    if (!Array.isArray(characters)) {
-      return [];
-    }
-
-    return characters.map((raw, index) => {
-      const item = (raw ?? {}) as {
-        id?: unknown;
-        characterId?: unknown;
-        characterName?: unknown;
-        name?: unknown;
-        character?: { name?: unknown };
-        level?: unknown;
-        createdAt?: unknown;
-        missions?: unknown;
-      };
-
-      const nameFromObject = typeof item.character?.name === 'string' ? item.character.name : undefined;
-      const resolvedCharacterName =
-        typeof item.characterName === 'string'
-          ? item.characterName
-          : typeof item.name === 'string'
-            ? item.name
-            : nameFromObject;
-      const missions = this.normalizeMissionProgress(item.missions);
-
-      return {
-        id:
-          typeof item.id === 'string'
-            ? item.id
-            : typeof item.characterId === 'string'
-              ? item.characterId
-              : `char-${index}`,
-        characterName: (resolvedCharacterName ?? '').trim(),
-        level: typeof item.level === 'number' ? item.level : undefined,
-        createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
-        ...(missions ? { missions } : {}),
-      };
-    });
-  }
-
-  /**
-   * Normalizes mission progress payloads into typed mission status entries.
-   */
-  private normalizeMissionProgress(missions: unknown): CharacterMissionProgress[] | undefined {
-    if (!Array.isArray(missions)) {
-      return undefined;
-    }
-
-    const normalizedMissions = missions.flatMap((rawMission) => {
-      const mission = (rawMission ?? {}) as { missionId?: unknown; status?: unknown };
-      if (typeof mission.missionId !== 'string' || typeof mission.status !== 'string') {
-        return [];
-      }
-
-      return [{ missionId: mission.missionId, status: mission.status as MissionStatus }];
-    });
-
-    return normalizedMissions.length > 0 ? normalizedMissions : undefined;
   }
 
   private getFirstTargetStatus(character: PlayerCharacterSummary): MissionStatus | null {
@@ -325,6 +276,8 @@ export default class CharacterListPage implements OnDestroy {
    * Starts game join and routes either to mission resume or cold-boot intro path.
    */
   navigateToGameJoin(character: PlayerCharacterSummary): void {
+    if (this.isLoading() || this.isJoining()) return;
+    this.errorMessage.set(null);
     const playerName = this.playerName().trim();
     if (!playerName) {
       this.errorMessage.set(this.t.character.list.errors.joinRequiresPlayer);
@@ -335,14 +288,37 @@ export default class CharacterListPage implements OnDestroy {
       return;
     }
 
-    this.sessionService.setMissionEntryContext(playerName, character);
+    const sessionKey = this.sessionService.getSessionKey();
+    if (!sessionKey) {
+      this.errorMessage.set(this.t.character.list.errors.joinRequiresSession);
+      return;
+    }
+    this.isJoining.set(true);
+    const joinAttempt = ++this.joinAttempt;
     const request: GameJoinRequest = {
       playerName,
       characterId: character.id,
-      sessionKey: this.sessionService.getSessionKey()!,
+      sessionKey,
     };
+    this.unsubscribeJoin = this.gameSessionService.requestGameJoin(request, (response) => {
+      if (this.destroyed || this.joinAttempt !== joinAttempt) return;
+      if (this.sessionService.getSessionKey() !== sessionKey) {
+        this.isJoining.set(false);
+        this.errorMessage.set(this.t.character.list.errors.joinRequiresSession);
+        return;
+      }
+      if (!response.success) {
+        this.isJoining.set(false);
+        this.errorMessage.set(response.message);
+        return;
+      }
+      this.enterJoinedCharacter(playerName, character, sessionKey, joinAttempt);
+    });
+  }
+
+  private enterJoinedCharacter(playerName: string, character: PlayerCharacterSummary, sessionKey: string, joinAttempt: number): void {
+    this.sessionService.setMissionEntryContext(playerName, character);
     this.sessionService.setActiveCharacter(character);
-    this.gameSessionService.requestGameJoin(request);
 
     const firstTargetStatus = this.getFirstTargetStatus(character);
     const isFirstTargetInProgress = this.missionService.isMissionInProgress(firstTargetStatus);
@@ -360,6 +336,7 @@ export default class CharacterListPage implements OnDestroy {
     const needsShipHydration = isFirstTargetInProgress || isFirstTargetCompleted;
 
     if (!needsShipHydration) {
+      this.isJoining.set(false);
       this.router.navigate([{ outlets }], {
         preserveFragment: true,
         state: { playerName, joinCharacter: character },
@@ -375,14 +352,24 @@ export default class CharacterListPage implements OnDestroy {
         missionId: isFirstTargetInProgress ? FIRST_TARGET_MISSION_ID : GENERIC_EXPLORATION_MISSION_ID,
         playerName,
         joinCharacter: character,
-        sessionKey: this.sessionService.getSessionKey()!,
+        sessionKey,
         missionStatus: firstTargetStatus ?? undefined,
       })
       .then((prepared) => {
+        if (this.destroyed || this.joinAttempt !== joinAttempt) return;
+        this.isJoining.set(false);
+        if (this.sessionService.getSessionKey() !== sessionKey) {
+          this.errorMessage.set(this.t.character.list.errors.joinRequiresSession);
+          return;
+        }
+        if (!prepared.joinShip) {
+          this.errorMessage.set(this.t.character.list.errors.joinShipUnavailable);
+          return;
+        }
         if (isFirstTargetInProgress) {
           window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
         }
-        this.router.navigate([{ outlets }], {
+        return this.router.navigate([{ outlets }], {
           preserveFragment: true,
           state: {
             playerName: prepared.playerName,
@@ -394,10 +381,19 @@ export default class CharacterListPage implements OnDestroy {
               : {}),
           },
         });
+      })
+      .catch((error: unknown) => {
+        if (this.destroyed || this.joinAttempt !== joinAttempt) return;
+        this.isJoining.set(false);
+        appLogger.warn('[character-list] Failed to prepare joined character navigation', error);
+        this.errorMessage.set(this.t.character.list.errors.joinShipUnavailable);
       });
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.unsubscribeList?.();
     this.unsubscribeInvalidSession?.();
+    this.unsubscribeJoin?.();
   }
 }

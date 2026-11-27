@@ -16,6 +16,7 @@ function createDeps(
   overrides: Partial<{
     playerName: string;
     shipId: string | null;
+    celestialBodyId: string | null;
     sessionKey: string | null;
     positionKm: Triple | null;
     solarSystemId: string;
@@ -52,7 +53,7 @@ function createDeps(
     getPlayerName: () => overrides.playerName ?? 'Pilot',
     getCharacterId: () => 'char-1',
     getActiveShipId: () => (overrides.shipId === undefined ? 'ship-1' : overrides.shipId),
-    getCelestialBodyId: () => 'cb-1',
+    getCelestialBodyId: () => (overrides.celestialBodyId === undefined ? 'cb-1' : overrides.celestialBodyId),
     getShipPositionKm: () => (overrides.positionKm === undefined ? { x: 1, y: 2, z: 3 } : overrides.positionKm),
     getSolarSystemId: () => overrides.solarSystemId ?? 'sol-1',
     setInterval: (handler, intervalMs) => {
@@ -65,7 +66,7 @@ function createDeps(
     },
   });
 
-  return { controller, stateService, socketService, calls, intervals, cleared, onItemsChanged };
+  return { controller, stateService, socketService, calls, intervals, cleared, onItemsChanged, overrides };
 }
 
 const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000006';
@@ -255,6 +256,100 @@ describe('FloatingDebrisController', () => {
     });
 
     expect(stateService.getAll().map((item) => item.id)).toEqual(['server-fresh']);
+  });
+
+  it('switches debris state scope when the active ship changes', () => {
+    const { controller, calls, stateService, overrides } = createDeps({ celestialBodyId: 'ship-1' });
+    controller.start();
+    stateService.upsertLocal([
+      {
+        id: 'ship-one-debris',
+        itemType: 'crate',
+        displayName: 'Crate',
+        positionKm: { x: 1, y: 2, z: 3 },
+      },
+    ]);
+
+    overrides.celestialBodyId = 'ship-2';
+    controller.requestNearbyItems();
+    expect(stateService.getAll().map((item) => item.id)).toEqual(['local-cold-boot-ship-tractor-beam']);
+
+    calls[1].onResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [
+        {
+          id: 'ship-two-debris',
+          itemType: 'crate',
+          displayName: 'Crate',
+          launchable: false,
+          state: 'deployed',
+          damageStatus: 'intact',
+          container: null,
+          owningPlayerId: null,
+          owningCharacterId: null,
+          spatial: {
+            solarSystemId: 'sol-1',
+            frame: 'barycentric',
+            positionKm: { x: 9, y: 8, z: 7 },
+            epochMs: Date.now(),
+          },
+          motion: null,
+          destroyedAt: null,
+          destroyedReason: null,
+          discoveredAt: null,
+          discoveredByCharacterId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+    });
+    expect(stateService.getAll().map((item) => item.id)).toEqual(['ship-two-debris']);
+
+    stateService.setScope('ship-1');
+    expect(stateService.getAll().map((item) => item.id)).toContain('ship-one-debris');
+    expect(stateService.getAll().map((item) => item.id)).not.toContain('ship-two-debris');
+  });
+
+  it('cancels and ignores a pending response when the new scope has missing context', () => {
+    const { controller, calls, stateService, overrides } = createDeps({ celestialBodyId: 'ship-1' });
+    controller.start();
+    const staleResponse = calls[0].onResponse;
+
+    overrides.celestialBodyId = 'ship-2';
+    overrides.positionKm = null;
+    controller.requestNearbyItems();
+
+    expect(calls[0].unsubscribe).toHaveBeenCalledOnce();
+    expect(calls).toHaveLength(1);
+    expect(stateService.getAll()).toEqual([]);
+
+    staleResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [],
+    });
+    expect(stateService.getAll()).toEqual([]);
+  });
+
+  it('ignores a pending response after the controller stops', () => {
+    const { controller, calls, stateService } = createDeps();
+    controller.start();
+    const staleResponse = calls[0].onResponse;
+
+    controller.stop();
+    stateService.clear();
+    expect(calls[0].unsubscribe).toHaveBeenCalledOnce();
+
+    staleResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [],
+    });
+    expect(stateService.getAll()).toEqual([]);
   });
 
   it('does not seed again on a subsequent empty response', () => {

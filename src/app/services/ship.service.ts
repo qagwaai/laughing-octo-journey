@@ -14,7 +14,7 @@ import {
   type ShipTransferResponse,
 } from '../model/ship-transfer';
 import { appLogger } from './logger';
-import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
+import { createCorrelationId, createUuidCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketService } from './socket.service';
 
 function buildShipOwnerKey(owner: {
@@ -169,7 +169,7 @@ export class ShipService {
    * Requests ships by normalized ownership descriptor and resolves only matching responses.
    */
   listShipsByOwner(request: ShipListByOwnerRequest, onResponse: (response: ShipListByOwnerResponse) => void): void {
-    const expectedCorrelationId = request.correlationId?.trim() || createCorrelationId('ship-list-by-owner');
+    const expectedCorrelationId = createUuidCorrelationId();
     const expectedRequestIdentity = request.requestIdentity ?? buildDefaultShipListByOwnerRequestIdentity(request);
     const requestWithCorrelation: ShipListByOwnerRequest = {
       ...request,

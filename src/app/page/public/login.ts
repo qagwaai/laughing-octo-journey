@@ -93,6 +93,7 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
    * Validates credentials, sends login request, and routes to character list on success.
    */
   submit(): void {
+    if (this.isSubmitting()) return;
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
@@ -129,6 +130,7 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
     this.unsubscribeResponse = this.authService.login(request, (response: LoginResponse) => {
       this.isSubmitting.set(false);
       if (response.success) {
+        this.sessionService.clearSession();
         if (rememberHandle === true) {
           writeRememberedPlayerHandle(request.playerName);
         } else {
@@ -136,6 +138,9 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
         }
         if (response.sessionKey) {
           this.sessionService.setSessionKey(response.sessionKey);
+        }
+        if (response.playerId) {
+          this.sessionService.setPlayerId(response.playerId);
         }
         this.sessionService.setPlayerName(request.playerName);
         this.successMessage.set(response.message);
@@ -148,11 +153,8 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
         return;
       }
 
-      if (response.reason === 'PLAYER_NOT_REGISTERED') {
-        this.errorMessage.set(this.t.public.login.messages.playerNotRegistered);
-        this.canNavigateToRegister.set(true);
-      } else if (response.reason === 'PASSWORD_MISMATCH') {
-        this.errorMessage.set(this.t.public.login.messages.passwordMismatch);
+      if (response.reason === 'invalid_credentials') {
+        this.errorMessage.set(this.t.public.login.messages.invalidCredentials);
         this.canNavigateToRegister.set(false);
       } else {
         this.errorMessage.set(response.message);

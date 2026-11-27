@@ -5,6 +5,7 @@ import type {
   NavigationRouteBatchFailureResponse,
   NavigationRouteBatchResponse,
   NavigationRouteBatchSuccessResponse,
+  NavigationRouteBatchUnavailableResponse,
   NavigationRouteBounds,
   NavigationRouteCapture,
   NavigationRouteCompletion,
@@ -328,6 +329,99 @@ describe('NavigationRouteSearchService', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.useRealTimers();
+  });
+
+  it.each([true, false])('surfaces correlated unavailability with identity present=%s', (withIdentity) => {
+    vi.useFakeTimers();
+    const { service, requests, getHandler } = setup();
+    service.start(selection, 'bounded-preview-100au');
+    const callback = getHandler();
+    const response: NavigationRouteBatchUnavailableResponse = {
+      success: false,
+      message: 'Game unavailable',
+      availability: 'unavailable',
+      reason: 'startup_not_verified',
+      correlationId: requests[0].correlationId,
+      ...(withIdentity ? {
+        requestIdentity: {
+          operation: 'navigation-route-edge-batch',
+          entityType: 'solar-system',
+          containerId: 'sol',
+        } as const,
+      } : {}),
+    };
+    callback?.(response);
+    expect(service.state()).toEqual({
+      status: 'error', reason: 'startup_not_verified', message: 'Game unavailable',
+    });
+    expect(getHandler()).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    callback?.(response);
+    vi.advanceTimersByTime(60_000);
+    expect(service.state()).toMatchObject({ status: 'error', reason: 'startup_not_verified' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('leaves uncorrelated notices pending until the existing timeout and ignores late replies', () => {
+    vi.useFakeTimers();
+    const { service, requests, getHandler } = setup();
+    service.start(selection, 'bounded-preview-100au');
+    const callback = getHandler();
+    const notice: NavigationRouteBatchUnavailableResponse = {
+      success: false, message: 'Game unavailable', availability: 'unavailable', reason: 'startup_not_verified',
+    };
+    callback?.(notice);
+    callback?.({ ...notice, correlationId: 'another-search' });
+    expect(service.state().status).toBe('searching');
+    expect(getHandler()).toBe(callback);
+    vi.advanceTimersByTime(30_000);
+    expect(service.state()).toMatchObject({ status: 'error', reason: 'DIRECT_REFERENCE_UNAVAILABLE' });
+    callback?.({ ...notice, correlationId: requests[0].correlationId });
+    expect(service.state()).toMatchObject({ status: 'error', reason: 'DIRECT_REFERENCE_UNAVAILABLE' });
+  });
+
+  it('ignores unavailable replies from a replaced search', () => {
+    const { service, requests, getHandler } = setup();
+    service.start(selection, 'bounded-preview-100au');
+    const oldCallback = getHandler();
+    service.start({ ...selection, destinationMarketId: 'other-market' }, 'bounded-preview-100au');
+    oldCallback?.({
+      success: false, message: 'Game unavailable', availability: 'unavailable', reason: 'startup_not_verified',
+      correlationId: requests[0].correlationId,
+    });
+    expect(service.state().status).toBe('searching');
+    expect(getHandler()).not.toBeNull();
+    service.clear();
+  });
+
+  it.each(['reason', 'identity', 'extra-domain-data'] as const)('rejects malformed unavailable %s', (defect) => {
+    const { service, requests, getHandler } = setup();
+    service.start(selection, 'bounded-preview-100au');
+    const response: NavigationRouteBatchUnavailableResponse = {
+      success: false, message: 'Game unavailable', availability: 'unavailable', reason: 'startup_not_verified',
+      correlationId: requests[0].correlationId,
+      requestIdentity: { operation: 'navigation-route-edge-batch', entityType: 'solar-system', containerId: 'sol' },
+    };
+    if (defect === 'reason') Reflect.set(response, 'reason', 'ready');
+    if (defect === 'identity') Reflect.set(response.requestIdentity!, 'containerId', 'other');
+    if (defect === 'extra-domain-data') Reflect.set(response, 'batch', {});
+    getHandler()?.(response);
+    expect(service.state()).toMatchObject({ status: 'error', reason: 'INVALID_RESPONSE' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('discards partial search results when a continuation reports unavailable', () => {
+    const { service, requests, reply, getHandler } = setup();
+    service.start(selection, 'bounded-preview-100au');
+    reply([result(requests[0].jobs[0])]);
+    getHandler()?.({
+      success: false, message: 'Game unavailable', availability: 'unavailable', reason: 'startup_not_verified',
+      correlationId: requests[1].correlationId,
+    });
+    expect(service.state()).toEqual({
+      status: 'error', reason: 'startup_not_verified', message: 'Game unavailable',
+    });
+    expect(requests).toHaveLength(2);
   });
 
   it('pins continuation batches and evaluates both sides into complete route choices', () => {

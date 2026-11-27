@@ -22,6 +22,8 @@ export interface MissionEntryContext {
  * Client session state container for session key and currently active ship.
  */
 export class SessionService {
+  private readonly authenticated = signal(false);
+  private playerId: string | null = null;
   private sessionKey = signal<string | null>(this.readPersistedSessionKey());
   private activeShipSignal = signal<ShipSummary | null>(this.readPersistedActiveShip());
   private activeCharacterSignal = signal<PlayerCharacterSummary | null>(this.readPersistedActiveCharacter());
@@ -37,6 +39,7 @@ export class SessionService {
    * Persists the current authenticated session key.
    */
   setSessionKey(key: string): void {
+    this.authenticated.set(true);
     this.sessionKey.set(key);
     this.persistSessionKey(key);
   }
@@ -45,13 +48,24 @@ export class SessionService {
    * Returns the current session key if one is active.
    */
   getSessionKey(): string | null {
-    return this.sessionKey();
+    const key = this.sessionKey();
+    return this.authenticated() ? key : null;
+  }
+
+  setPlayerId(id: string): void {
+    this.playerId = id;
+  }
+
+  getPlayerId(): string | null {
+    return this.authenticated() ? this.playerId : null;
   }
 
   /**
    * Clears all session-scoped state, including selected active ship.
    */
   clearSession(): void {
+    this.authenticated.set(false);
+    this.playerId = null;
     this.sessionKey.set(null);
     this.clearActiveShip();
     this.activeCharacterSignal.set(null);
@@ -67,7 +81,7 @@ export class SessionService {
    * Indicates whether a session key is currently present.
    */
   hasSession(): boolean {
-    return this.sessionKey() !== null;
+    return this.getSessionKey() !== null;
   }
 
   private normalizeShipId(id: string | undefined | null): string {

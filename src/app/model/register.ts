@@ -9,6 +9,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   locale?: string;
+  correlationId?: string;
 }
 
 /**
@@ -18,5 +19,7 @@ export interface RegisterResponse {
   success: boolean;
   message: string;
   playerId?: string;
-  sessionKey?: string;
+  correlationId?: string;
+  reason?: 'invalid_request' | 'unavailable' | 'storage_failure' | 'data_unavailable' | 'player_exists' | 'outcome_unknown';
+  clientError?: 'timeout' | 'invalid_response';
 }

@@ -684,7 +684,7 @@ describe('ViewerDataFacade', () => {
     expect(state.ships).toEqual([]);
   });
 
-  it('repairs invalid ship spatial once and reloads ships on successful upsert', () => {
+  it('does not fabricate or persist placement for an invalid ship position', () => {
     const { facade, services } = createHarness();
     services.solarSystemService.getSolarSystem.mockImplementation((_request: unknown, cb: (response: any) => void) => {
       cb({
@@ -729,32 +729,7 @@ describe('ViewerDataFacade', () => {
 
     facade.loadSystem('sol');
 
-    expect(services.socketService.upsertShip).toHaveBeenCalledTimes(1);
-    expect(services.shipService.listShipsByOwner).toHaveBeenCalledTimes(2);
-  });
-
-  it('does not reload ships when invalid-spatial upsert fails', () => {
-    const { facade, services } = createHarness();
-    services.solarSystemService.getSolarSystem.mockImplementation((_request: unknown, cb: (response: any) => void) => {
-      cb({
-        success: true,
-        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
-        stars: [starBody('sol-star')],
-        bodies: [stationBody('station-a')],
-      });
-    });
-
-    services.shipService.listShipsByOwner.mockImplementation((_request: unknown, cb: (response: any) => void) => {
-      cb({ success: true, ships: [{ id: 'ship-invalid', spatial: { solarSystemId: 'sol' } }] });
-    });
-
-    services.socketService.upsertShip.mockImplementation((_request: unknown, cb: (response: any) => void) => {
-      cb({ success: false, message: 'upsert-failed' });
-    });
-
-    facade.loadSystem('sol');
-
-    expect(services.socketService.upsertShip).toHaveBeenCalledTimes(1);
+    expect(services.socketService.upsertShip).not.toHaveBeenCalled();
     expect(services.shipService.listShipsByOwner).toHaveBeenCalledTimes(1);
   });
 });

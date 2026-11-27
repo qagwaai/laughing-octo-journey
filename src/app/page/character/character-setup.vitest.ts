@@ -29,11 +29,7 @@ import {
 } from '../../model/character-edit';
 import { CHARACTER_NAME_SUGGESTIONS } from '../../model/character-name-suggestions';
 import { INVALID_SESSION_EVENT } from '../../model/session';
-import {
-  SHIP_LIST_BY_OWNER_REQUEST_EVENT,
-  SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-  type ShipListByOwnerResponse,
-} from '../../model/ship-list-by-owner';
+import { SHIP_LIST_BY_OWNER_REQUEST_EVENT } from '../../model/ship-list-by-owner';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { CharacterBustPreviewStateService } from '../../services/character-bust-preview-state.service';
@@ -49,13 +45,6 @@ type MockBustAdapter = {
   readCharacterBust: ReturnType<typeof vi.fn>;
   createCharacterBust: ReturnType<typeof vi.fn>;
   updateCharacterBust: ReturnType<typeof vi.fn>;
-};
-
-const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000002';
-const TEST_REQUEST_IDENTITY = {
-  operation: 'test-op',
-  entityType: 'test-entity',
-  containerId: 'test-container',
 };
 
 const TEST_BUST_DESCRIPTOR = {
@@ -143,42 +132,6 @@ function createMockBustAdapter(): MockBustAdapter {
   };
 }
 
-function createShipListResponse(params?: {
-  success?: boolean;
-  ships?: ShipListByOwnerResponse['ships'];
-  message?: string;
-  correlationId?: string;
-  requestIdentity?: ShipListByOwnerResponse['requestIdentity'];
-}): ShipListByOwnerResponse {
-  return {
-    success: params?.success ?? true,
-    message: params?.message ?? 'ok',
-    correlationId: params?.correlationId ?? TEST_CORRELATION_ID,
-    requestIdentity: params?.requestIdentity ?? TEST_REQUEST_IDENTITY,
-    owner: {
-      ownerType: 'player-character',
-      playerId: 'p-1',
-      characterId: 'c-1',
-      npcId: null,
-      factionId: null,
-    },
-    ships: params?.ships ?? [
-      {
-        id: 'ship-1',
-        model: 'Scavenger Pod',
-        tier: 1,
-        name: "Pioneer's Ship",
-        spatial: {
-          solarSystemId: 'sol',
-          frame: 'barycentric',
-          positionKm: { x: 0, y: 0, z: 0 },
-          epochMs: 1,
-        },
-      },
-    ],
-  };
-}
-
 function setup(options: {
   socketService: MockSocketServiceWithUpsert;
   sessionService: MockSessionService;
@@ -217,6 +170,7 @@ describe('CharacterSetupPage', () => {
   beforeEach(() => {
     socketService = createExtendedMockSocketService();
     sessionService = createMockSessionService('test-session-key');
+    sessionService.setPlayerId('player-1');
     window.localStorage.removeItem('character.setup.lastSuggestedName');
   });
 
@@ -906,93 +860,13 @@ describe('CharacterSetupPage', () => {
       } satisfies CharacterAddResponse);
     }
 
-    it('should emit owner-scoped ship list after successful character-add', async () => {
+    it('does not overwrite server starter placement after character creation', async () => {
       const { component, fixture } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
       await fixture.whenStable();
 
-      const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT);
-      expect(shipListEmit).toBeDefined();
-      expect(shipListEmit!.data).toEqual(
-        expect.objectContaining({
-          playerName: 'Pioneer',
-          sessionKey: 'test-session-key',
-          owner: {
-            ownerType: 'player-character',
-            characterId: 'c-1',
-          },
-        }),
-      );
-    });
-
-    it('should set warningMessage when ship-list-response fails', async () => {
-      const { component, fixture } = setup({ socketService, sessionService });
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-      await fixture.whenStable();
-
-      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)
-        ?.data as { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] } | undefined;
-
-      socketService.triggerEvent(
-        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({
-          success: false,
-          ships: [],
-          message: 'No ships found.',
-          correlationId: shipListRequest?.correlationId,
-          requestIdentity: shipListRequest?.requestIdentity,
-        }),
-      );
-
-      expect(component['warningMessage']()).toBe('Character created, but starter ship could not be resolved yet.');
-    });
-
-    it('should set warningMessage when ship-list-response has no ships', async () => {
-      const { component, fixture } = setup({ socketService, sessionService });
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-      await fixture.whenStable();
-
-      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)
-        ?.data as { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] } | undefined;
-
-      socketService.triggerEvent(
-        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({
-          ships: [],
-          correlationId: shipListRequest?.correlationId,
-          requestIdentity: shipListRequest?.requestIdentity,
-        }),
-      );
-
-      expect(component['warningMessage']()).toBe('Character created, but no starter ship record was returned.');
-    });
-
-    it('should emit ship-upsert-request when ship-list-response succeeds with a ship', async () => {
-      const { component, fixture } = setup({ socketService, sessionService });
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-      await fixture.whenStable();
-
-      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)
-        ?.data as { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] } | undefined;
-
-      socketService.triggerEvent(
-        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({
-          correlationId: shipListRequest?.correlationId,
-          requestIdentity: shipListRequest?.requestIdentity,
-        }),
-      );
-
-      const shipUpsertEmit = socketService.emittedEvents.find((e) => e.event === SHIP_UPSERT_REQUEST_EVENT);
-      expect(shipUpsertEmit).toBeDefined();
-      expect(shipUpsertEmit!.data.playerName).toBe('Pioneer');
-      expect(shipUpsertEmit!.data.characterId).toBe('c-1');
-      expect(shipUpsertEmit!.data.ship.id).toBe('ship-1');
-      expect(shipUpsertEmit!.data.ship.inventory.map((item: { itemType: string }) => item.itemType)).toEqual([
-        'expendable-dart-drone',
-        'sensor-array',
-        'ship-tractor-beam',
-      ]);
+      expect(socketService.emittedEvents.some((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)).toBe(false);
+      expect(socketService.emittedEvents.some((e) => e.event === SHIP_UPSERT_REQUEST_EVENT)).toBe(false);
     });
 
     it('should navigate before starter ship provisioning settles', async () => {
@@ -1007,56 +881,6 @@ describe('CharacterSetupPage', () => {
           state: { playerName: 'Pioneer' },
         },
       );
-    });
-
-    it('should set warningMessage when ship-upsert-response fails', async () => {
-      const { component, fixture } = setup({ socketService, sessionService });
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-      await fixture.whenStable();
-
-      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)
-        ?.data as { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] } | undefined;
-
-      socketService.triggerEvent(
-        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({
-          correlationId: shipListRequest?.correlationId,
-          requestIdentity: shipListRequest?.requestIdentity,
-        }),
-      );
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: false,
-        message: 'Ship upsert failed.',
-        playerName: 'Pioneer',
-      });
-
-      expect(component['warningMessage']()).toBe('Character created, but starter ship position update failed.');
-    });
-
-    it('should clear warningMessage after successful ship upsert', async () => {
-      const { component, fixture } = setup({ socketService, sessionService });
-      component['warningMessage'].set('Previous warning');
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-      await fixture.whenStable();
-
-      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)
-        ?.data as { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] } | undefined;
-
-      socketService.triggerEvent(
-        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({
-          correlationId: shipListRequest?.correlationId,
-          requestIdentity: shipListRequest?.requestIdentity,
-        }),
-      );
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
-
-      expect(component['warningMessage']()).toBeNull();
-      expect(socketService.emittedEvents.some((e) => e.event === 'item-upsert-request')).toBe(false);
     });
 
     it('should not trigger ship provisioning on character-edit success', () => {

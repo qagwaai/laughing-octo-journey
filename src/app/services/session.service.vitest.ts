@@ -61,13 +61,13 @@ describe('SessionService', () => {
     expect(window.sessionStorage.getItem(sessionStorageKey)).toBe('key-2');
   });
 
-  it('should hydrate from persisted session key', () => {
+  it('should keep persisted session key untrusted until a fresh login', () => {
     window.sessionStorage.setItem(sessionStorageKey, 'persisted-key');
 
     const hydrated = new SessionService();
 
-    expect(hydrated.hasSession()).toBe(true);
-    expect(hydrated.getSessionKey()).toBe('persisted-key');
+    expect(hydrated.hasSession()).toBe(false);
+    expect(hydrated.getSessionKey()).toBeNull();
   });
 
   it('should persist and hydrate player name', () => {
